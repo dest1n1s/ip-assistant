@@ -1,48 +1,119 @@
 import type { MetaFunction } from "@remix-run/node";
+import { Form, useLoaderData, useSubmit } from "@remix-run/react";
+import { Search } from "lucide-react";
+import { useRef, useState } from "react";
+import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { listAllCases } from "~/lib/database/case.server";
+import { FilterCard } from "~/components/app/filter-card";
+import { mapWithDivider } from "~/lib/utils";
+import { CaseCard } from "~/components/app/case-card";
+import { CaseSchema } from "~/lib/types/case";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "知识产权助手" },
+    {
+      name: "description",
+      content:
+        "使用争议焦点、法律问题、案情描述等内容检索相关案例、法规、观点。",
+    },
   ];
 };
 
+const mockFilter: FilterCategory = {
+  name: "法院层级",
+  filters: [
+    {
+      name: "最高人民法院",
+      count: 100,
+      selected: false,
+      children: [],
+    },
+    {
+      name: "高级人民法院",
+      count: 100,
+      selected: false,
+      children: [
+        {
+          name: "江苏省高级人民法院",
+          count: 10,
+          selected: false,
+          children: [],
+        },
+      ],
+    },
+    {
+      name: "中级人民法院",
+      count: 100,
+      selected: false,
+      children: [],
+    },
+    {
+      name: "基层人民法院",
+      count: 100,
+      selected: false,
+      children: [],
+    },
+  ],
+};
+
+export async function loader() {
+  const cases = await listAllCases();
+  const filter = mockFilter;
+  return { cases, filter };
+}
+
 export default function Index() {
+  const loaderData = useLoaderData<typeof loader>();
+  const cases = CaseSchema.array().parse(loaderData.cases);
+  const loaderFilter = FilterCategorySchema.parse(loaderData.filter);
+
+  const form = useRef<HTMLFormElement>(null);
+  const submit = useSubmit();
+  const [filter, setFilter] = useState<FilterCategory>(loaderFilter);
   return (
-    <div className="font-sans p-4">
-      <h1 className="text-3xl">Welcome to Remix</h1>
-      <ul className="list-disc mt-4 pl-6 space-y-2">
-        <li>
-          <a
-            className="text-blue-700 underline visited:text-purple-900"
-            target="_blank"
-            href="https://remix.run/start/quickstart"
-            rel="noreferrer"
-          >
-            5m Quick Start
-          </a>
-        </li>
-        <li>
-          <a
-            className="text-blue-700 underline visited:text-purple-900"
-            target="_blank"
-            href="https://remix.run/start/tutorial"
-            rel="noreferrer"
-          >
-            30m Tutorial
-          </a>
-        </li>
-        <li>
-          <a
-            className="text-blue-700 underline visited:text-purple-900"
-            target="_blank"
-            href="https://remix.run/docs"
-            rel="noreferrer"
-          >
-            Remix Docs
-          </a>
-        </li>
-      </ul>
+    <div className="font-sans p-16 container flex flex-col gap-8">
+      <Form ref={form}>
+        <Input
+          className="px-6 rounded-full border-2 border-primary"
+          inputClassName="py-3 text-lg"
+          placeholder="输入争议焦点、法律问题、案情描述..."
+          name="q"
+          tabIndex={-1}
+          endContent={
+            <Button variant="ghost" size="icon" type="submit">
+              <Search />
+            </Button>
+          }
+          onKeyUp={(e) => {
+            if (e.key === "Enter") {
+              submit(form.current!);
+            }
+          }}
+        />
+      </Form>
+      <div className="flex gap-8">
+        <div className="flex basis-80 flex-col gap-4 shrink-0">
+          <FilterCard filter={filter} onFilterChanged={setFilter} />
+          <FilterCard filter={filter} onFilterChanged={setFilter} />
+        </div>
+        <div className="flex grow flex-col">
+          {mapWithDivider(
+            cases,
+            (c, i) => (
+              <CaseCard key={c.id} serialNumber={i + 1} case={c} />
+            ),
+            (_, i) => (
+              <div
+                key={`divider-${i}`}
+                className="border-b border-border"
+              ></div>
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 }

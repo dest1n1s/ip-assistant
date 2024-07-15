@@ -4,7 +4,7 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 const mongoClient = new MongoClient(env.mongodbUrl, {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false,
     deprecationErrors: true,
   },
 });

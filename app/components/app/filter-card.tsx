@@ -3,15 +3,21 @@ import { Checkbox } from "../ui/checkbox";
 import { ChevronRight, Dot } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { FilterCategory, NestedFilter } from "~/lib/types/filter";
+import { useFetcher } from "@remix-run/react";
 
 export const FilterItem = memo(
   ({
     filter,
+    filterPath,
+    filterCategoryName,
     onFilterChanged,
   }: {
     filter: NestedFilter;
+    filterPath: string[];
+    filterCategoryName: string;
     onFilterChanged: (filter: NestedFilter) => void;
   }) => {
+    const fetcher = useFetcher();
     const [expanded, setExpanded] = useState(false);
     const selected = filter.selected;
     const setSelected = (v: boolean) => {
@@ -27,7 +33,7 @@ export const FilterItem = memo(
               ({filter.count})
             </span>
           </div>
-          {filter.children.length > 0 ? (
+          {filter.hasChildren ? (
             <ChevronRight
               className={cn(
                 "transform transition-transform cursor-pointer",
@@ -35,6 +41,15 @@ export const FilterItem = memo(
               )}
               onClick={() => {
                 setExpanded(!expanded);
+                if (!filter.children) {
+                  fetcher.submit(
+                    {
+                      filterCategoryName: filterCategoryName,
+                      filterPath: filterPath,
+                    },
+                    { action: "retrieve-child-filters" }
+                  );
+                }
               }}
             />
           ) : (
@@ -43,20 +58,23 @@ export const FilterItem = memo(
         </div>
         {expanded && (
           <div className="pl-4">
-            {filter.children.map((child) => (
-              <FilterItem
-                key={child.name}
-                filter={child}
-                onFilterChanged={(f) => {
-                  onFilterChanged({
-                    ...filter,
-                    children: filter.children.map((ff) =>
-                      ff.name === f.name ? f : ff
-                    ),
-                  });
-                }}
-              />
-            ))}
+            {filter.children &&
+              filter.children.map((child) => (
+                <FilterItem
+                  key={child.name}
+                  filter={child}
+                  filterPath={[...filterPath, filter.name]}
+                  filterCategoryName={filterCategoryName}
+                  onFilterChanged={(f) => {
+                    onFilterChanged({
+                      ...filter,
+                      children: filter.children!.map((ff) =>
+                        ff.name === f.name ? f : ff
+                      ),
+                    });
+                  }}
+                />
+              ))}
           </div>
         )}
       </div>
@@ -86,6 +104,8 @@ export const FilterCardContent = memo(
         <FilterItem
           key={filter.name}
           filter={filter}
+          filterPath={[]}
+          filterCategoryName={filterCategory.name}
           onFilterChanged={(f) => {
             onFilterChanged({
               ...filterCategory,

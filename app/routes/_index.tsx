@@ -1,7 +1,7 @@
 import type { MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useSubmit } from "@remix-run/react";
 import { Search } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -29,17 +29,20 @@ const mockFilter: FilterCategory = {
       name: "最高人民法院",
       count: 100,
       selected: false,
+      hasChildren: false,
       children: [],
     },
     {
       name: "高级人民法院",
       count: 100,
       selected: false,
+      hasChildren: true,
       children: [
         {
           name: "江苏省高级人民法院",
           count: 10,
           selected: false,
+          hasChildren: false,
           children: [],
         },
       ],
@@ -48,12 +51,14 @@ const mockFilter: FilterCategory = {
       name: "中级人民法院",
       count: 100,
       selected: false,
+      hasChildren: false,
       children: [],
     },
     {
       name: "基层人民法院",
       count: 100,
       selected: false,
+      hasChildren: false,
       children: [],
     },
   ],
@@ -73,6 +78,12 @@ export default function Index() {
   const form = useRef<HTMLFormElement>(null);
   const submit = useSubmit();
   const [filter, setFilter] = useState<FilterCategory>(loaderFilter);
+
+  useEffect(() => {
+    setFilter(loaderFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaderData.filter]);
+
   return (
     <div className="font-sans p-16 container flex flex-col gap-8">
       <Form ref={form}>

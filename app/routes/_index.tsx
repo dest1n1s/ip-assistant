@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { listAllCases } from "~/lib/database/case.server";
+import { retrieveChildFilters, search } from "~/lib/database/case.server";
 import { FilterCard } from "~/components/app/filter-card";
 import { mapWithDivider } from "~/lib/utils";
 import { CaseCard } from "~/components/app/case-card";
@@ -22,51 +22,16 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-const mockFilter: FilterCategory = {
-  name: "法院层级",
-  filters: [
-    {
-      name: "最高人民法院",
-      count: 100,
-      selected: false,
-      hasChildren: false,
-      children: [],
-    },
-    {
-      name: "高级人民法院",
-      count: 100,
-      selected: false,
-      hasChildren: true,
-      children: [
-        {
-          name: "江苏省高级人民法院",
-          count: 10,
-          selected: false,
-          hasChildren: false,
-          children: [],
-        },
-      ],
-    },
-    {
-      name: "中级人民法院",
-      count: 100,
-      selected: false,
-      hasChildren: false,
-      children: [],
-    },
-    {
-      name: "基层人民法院",
-      count: 100,
-      selected: false,
-      hasChildren: false,
-      children: [],
-    },
-  ],
-};
-
 export async function loader() {
-  const cases = await listAllCases();
-  const filter = mockFilter;
+  const cases = await search();
+  const filter = {
+    name: "cause",
+    displayName: "案由",
+    filters: (await retrieveChildFilters("cause", [])).map((f) => ({
+      ...f,
+      selected: false,
+    })),
+  };
   return { cases, filter };
 }
 
@@ -108,7 +73,7 @@ export default function Index() {
       <div className="flex gap-8">
         <div className="flex basis-80 flex-col gap-4 shrink-0">
           <FilterCard filter={filter} onFilterChanged={setFilter} />
-          <FilterCard filter={filter} onFilterChanged={setFilter} />
+          {/* <FilterCard filter={filter} onFilterChanged={setFilter} /> */}
         </div>
         <div className="flex grow flex-col">
           {mapWithDivider(

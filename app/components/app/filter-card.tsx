@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Checkbox } from "../ui/checkbox";
 import { ChevronRight, Dot } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -17,12 +17,22 @@ export const FilterItem = memo(
     filterCategoryName: string;
     onFilterChanged: (filter: NestedFilter) => void;
   }) => {
-    const fetcher = useFetcher();
+    const fetcher = useFetcher<NestedFilter[]>();
     const [expanded, setExpanded] = useState(false);
     const selected = filter.selected;
     const setSelected = (v: boolean) => {
       onFilterChanged({ ...filter, selected: v });
     };
+    useEffect(() => {
+      if (fetcher.data) {
+        onFilterChanged({
+          ...filter,
+          children: fetcher.data,
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetcher.data]);
+
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
@@ -45,7 +55,7 @@ export const FilterItem = memo(
                   fetcher.submit(
                     {
                       filterCategoryName: filterCategoryName,
-                      filterPath: filterPath,
+                      filterPath: filterPath.join("|"),
                     },
                     { action: "retrieve-child-filters" }
                   );
@@ -63,7 +73,7 @@ export const FilterItem = memo(
                 <FilterItem
                   key={child.name}
                   filter={child}
-                  filterPath={[...filterPath, filter.name]}
+                  filterPath={[...filterPath, child.name]}
                   filterCategoryName={filterCategoryName}
                   onFilterChanged={(f) => {
                     onFilterChanged({
@@ -89,9 +99,9 @@ export interface FilterCardProps {
 }
 
 export const FilterCardHeader = memo(
-  ({ filter: { name } }: FilterCardProps) => (
+  ({ filter: { displayName } }: FilterCardProps) => (
     <div className="py-3 px-4">
-      <div className="text-lg font-semibold">{name}</div>
+      <div className="text-lg font-semibold">{displayName}</div>
     </div>
   )
 );
@@ -104,7 +114,7 @@ export const FilterCardContent = memo(
         <FilterItem
           key={filter.name}
           filter={filter}
-          filterPath={[]}
+          filterPath={[filter.name]}
           filterCategoryName={filterCategory.name}
           onFilterChanged={(f) => {
             onFilterChanged({

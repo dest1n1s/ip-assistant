@@ -1,7 +1,9 @@
 export const getSearchPipeline = (
   query?: string,
   filter?: { category: string; name: string }[],
-  scoreThreshold = 3
+  scoreThreshold = 3,
+  limit = 10,
+  skip = 0
 ) => {
   return [
     ...(query
@@ -57,17 +59,18 @@ export const getSearchPipeline = (
         },
     },
     {
-      $group:
+      $skip:
         /**
-         * _id: The id of the group.
-         * fieldN: The first field name.
+         * Provide the number of documents to skip.
          */
-        {
-          _id: null,
-          count: {
-            $count: {},
-          },
-        },
+        skip,
+    },
+    {
+      $limit:
+        /**
+         * Provide the number of documents to limit.
+         */
+        limit,
     },
   ];
 };
@@ -114,7 +117,7 @@ export const getFilterPipeline = (category: string, path: string[]) => {
          * fieldN: The first field name.
          */
         {
-          _id: `$${category}`,
+          _id: [`$${category}`, "$unwindIndex"],
           count: {
             $count: {},
           },
@@ -122,9 +125,59 @@ export const getFilterPipeline = (category: string, path: string[]) => {
     },
     {
       $project: {
-        name: "$_id",
+        _id: 0,
+        name: {
+          $arrayElemAt: ["$_id", 0],
+        },
+        index: {
+          $arrayElemAt: ["$_id", 1],
+        },
         count: 1,
       },
+    },
+    {
+      $lookup:
+        /**
+         * from: The target collection.
+         * localField: The local join field.
+         * foreignField: The target join field.
+         * as: The name for the results.
+         * pipeline: Optional pipeline to run on the foreign collection.
+         * let: Optional variables to use in the pipeline field stages.
+         */
+        {
+          from: `${category}-relation`,
+          localField: "name",
+          foreignField: "first",
+          as: "hasChildren",
+        },
+    },
+    {
+      $project:
+        /**
+         * specifications: The fields to
+         *   include or exclude.
+         */
+        {
+          count: 1,
+          name: 1,
+          hasChildren: {
+            $gt: [
+              {
+                $size: {
+                  $filter: {
+                    input: "$hasChildren",
+                    as: "hasChildren",
+                    cond: {
+                      $eq: ["$index", "$$hasChildren.index"],
+                    },
+                  },
+                },
+              },
+              0,
+            ],
+          },
+        },
     },
   ];
 };

@@ -1,12 +1,13 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+import type { Config } from "tailwindcss"
+
+const config = {
   darkMode: ["class"],
   content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
+	],
   prefix: "",
   theme: {
     container: {
@@ -22,16 +23,10 @@ module.exports = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
-        surface: "hsl(var(--surface))",
-        foreground: {
-          DEFAULT: "hsl(var(--foreground))",
-          "weaken-1": "hsl(var(--foreground-weaken-1))",
-          "weaken-2": "hsl(var(--foreground-weaken-2))",
-        },
+        foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          "lighten-1": "hsl(var(--primary-lighten-1))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -79,5 +74,7 @@ module.exports = {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
-};
+  plugins: [require("tailwindcss-animate")],
+} satisfies Config
+
+export default config

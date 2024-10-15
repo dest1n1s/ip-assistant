@@ -64,6 +64,11 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
                 {c.type}
               </div>
             )}
+            {c.searchScore && (
+              <div className="bg-yellow-500 text-primary-foreground py-1 px-2 shrink-0 text-sm">
+                {c.searchScore.toFixed(2)}
+              </div>
+            )}
             <div className="text-lg font-semibold">{c.title}</div>
           </div>
 

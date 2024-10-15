@@ -1,4 +1,4 @@
-import type { MetaFunction } from "@remix-run/node";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useSubmit } from "@remix-run/react";
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +10,15 @@ import { FilterCard } from "~/components/app/filter-card";
 import { mapWithDivider } from "~/lib/utils";
 import { CaseCard } from "~/components/app/case-card";
 import { CaseSchema } from "~/lib/types/case";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+  PaginationNext,
+} from "~/components/ui/pagination";
 
 export const meta: MetaFunction = () => {
   return [
@@ -22,8 +31,12 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export async function loader() {
-  const cases = await search();
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q") || undefined;
+  const page = parseInt(url.searchParams.get("page") || "0");
+  const pageSize = parseInt(url.searchParams.get("pageSize") || "10");
+  const cases = await search(q, [], 1, pageSize, page);
   const filter = {
     name: "cause",
     displayName: "案由",
@@ -32,13 +45,14 @@ export async function loader() {
       selected: false,
     })),
   };
-  return { cases, filter };
+  return { cases, filter, page };
 }
 
 export default function Index() {
   const loaderData = useLoaderData<typeof loader>();
   const cases = CaseSchema.array().parse(loaderData.cases);
   const loaderFilter = FilterCategorySchema.parse(loaderData.filter);
+  const page = loaderData.page;
 
   const form = useRef<HTMLFormElement>(null);
   const submit = useSubmit();
@@ -88,6 +102,33 @@ export default function Index() {
               ></div>
             )
           )}
+          <div className="border-b border-border"></div>
+          <div className="p-2 flex gap-4 items-start text-foreground bg-surface">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious to="#" />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">1</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#" isActive>
+                    2
+                  </PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">3</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext href="#" />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
       </div>
     </div>

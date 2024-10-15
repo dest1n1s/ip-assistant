@@ -14,6 +14,7 @@ export const CaseSchema = z.object({
   content: z.record(z.string(), z.string()),
   relatedLaw: z.string().optional(),
   relationalIndex: z.string().optional(),
+  searchScore: z.number().optional(),
 });
 
 export type Case = z.infer<typeof CaseSchema>;

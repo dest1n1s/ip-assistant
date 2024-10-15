@@ -1,47 +1,134 @@
-export const getSearchPipeline = (
-  query?: string,
+export const getHybridSearchPipeline = (
+  query?: {
+    text: string;
+    vector: number[];
+  },
   filter?: { category: string; name: string }[],
-  scoreThreshold = 3,
+  scoreThreshold = 1,
+  limit = 10,
+  skip = 0
+) => {
+  // Vector search pipeline on 'caseEmbeddings' collection
+  const vectorSearchPipeline = query
+    ? [
+        {
+          $vectorSearch: {
+            index: "vector_index_bge_m3",
+            path: "bgeM3Embedding",
+            queryVector: query.vector,
+            numCandidates: 150,
+            limit: limit,
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            caseId: 1,
+            searchScore: { $meta: "vectorSearchScore" },
+            source: "vector",
+          },
+        },
+        {
+          $lookup: {
+            from: "case",
+            localField: "caseId",
+            foreignField: "_id",
+            as: "case",
+          },
+        },
+        { $unwind: "$case" },
+        {
+          $project: {
+            caseId: 1,
+            searchScore: 1,
+            case: "$case", // Include the entire case document
+            source: 1,
+          },
+        },
+      ]
+    : [];
+
+  // Text search pipeline on 'case' collection
+  const textSearchPipeline = query
+    ? [
+        {
+          $search: {
+            text: {
+              query: query.text,
+              path: ["title", "content"],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            caseId: { $toString: "$_id" }, // Ensure 'caseId' matches type
+            searchScore: { $meta: "searchScore" },
+            case: "$$ROOT", // Include the entire document
+            source: "text",
+          },
+        },
+      ]
+    : [];
+
+  // Combine both pipelines using $unionWith
+  return [
+    ...vectorSearchPipeline,
+    {
+      $unionWith: {
+        coll: "case",
+        pipeline: textSearchPipeline,
+      },
+    },
+    {
+      $group: {
+        _id: "$caseId",
+        vectorScore: {
+          $max: {
+            $cond: [{ $eq: ["$source", "vector"] }, "$searchScore", 0],
+          },
+        },
+        textScore: {
+          $max: {
+            $cond: [{ $eq: ["$source", "text"] }, "$searchScore", 0],
+          },
+        },
+        case: { $first: "$case" }, // Retain the full case document
+      },
+    },
+    {
+      $set: {
+        sortScore: {
+          $sqrt: {
+            $add: [{ $multiply: [10, "$vectorScore"] }, "$textScore"],
+          },
+        },
+      },
+    },
+    ...(filter && filter.length > 0
+      ? [
+          {
+            $match: {
+              $and: filter.map((f) => ({
+                [`case.${f.category}`]: f.name,
+              })),
+            },
+          },
+        ]
+      : []),
+    { $sort: { sortScore: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ];
+};
+
+export const getSearchPipeline = (
+  filter?: { category: string; name: string }[],
+  scoreThreshold = 1,
   limit = 10,
   skip = 0
 ) => {
   return [
-    ...(query
-      ? [
-          {
-            $search:
-              /**
-               * index: The name of the Search index.
-               * text: Analyzed search, with required fields of query and path, the analyzed field(s) to search.
-               * compound: Combines ops.
-               * span: Find in text field regions.
-               * exists: Test for presence of a field.
-               * near: Find near number or date.
-               * range: Find in numeric or date range.
-               */
-              {
-                text: {
-                  query,
-                  path: {
-                    wildcard: "content.*",
-                  },
-                },
-              },
-          },
-          {
-            $addFields:
-              /**
-               * specifications: The fields to
-               *   include or exclude.
-               */
-              {
-                searchScore: {
-                  $meta: "searchScore",
-                },
-              },
-          },
-        ]
-      : []),
     {
       $match:
         /**
@@ -50,7 +137,6 @@ export const getSearchPipeline = (
         {
           $expr: {
             $and: [
-              ...(query ? [{ $gt: ["$searchScore", scoreThreshold] }] : []),
               ...(filter?.map((f) => ({
                 $in: [f.name, `$${f.category}`],
               })) || []),

@@ -1,6 +1,10 @@
 import { Case } from "../types/case";
 import { db, mongoConnectPromise } from "./mongo.server";
-import { getFilterPipeline, getSearchPipeline } from "./pipelines.server";
+import {
+  getFilterPipeline,
+  getHybridSearchPipeline,
+  getSearchPipeline,
+} from "./pipelines.server";
 
 export const search = async (
   query?: string,
@@ -10,22 +14,41 @@ export const search = async (
   page = 0
 ) => {
   await mongoConnectPromise;
-  const cases = db.collection<Case>("case");
-  const result = await cases
-    .aggregate(
-      // getSearchPipeline("齐鲁少年军校", [
-      //   { category: "cause", name: "著作权权属、侵权纠纷" },
-      // ])
-      getSearchPipeline(
-        query,
-        filter,
-        scoreThreshold,
-        pageSize,
-        page * pageSize
-      )
+  if (query) {
+    const vector: number[] = await fetch(
+      "http://10.176.52.122:30832/generate_embedding/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: query }),
+      }
     )
-    .toArray();
-  return result;
+      .then((response) => response.json())
+      .then((data) => data.embedding)
+      .catch((error) => console.error("Error:", error));
+    const pipeline = getHybridSearchPipeline(
+      {
+        text: query,
+        vector,
+      },
+      filter,
+      scoreThreshold,
+      pageSize,
+      page * pageSize
+    );
+    return db
+      .collection("caseEmbeddings")
+      .aggregate(pipeline)
+      .toArray()
+      .then((result) => {
+        return result.map((r) => r.case);
+      });
+  } else {
+    const pipeline = getSearchPipeline(filter, scoreThreshold, pageSize, page);
+    return db.collection("case").aggregate(pipeline).toArray();
+  }
 };
 
 export const retrieveChildFilters = async (

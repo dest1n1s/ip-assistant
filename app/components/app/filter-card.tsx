@@ -1,9 +1,9 @@
-import { memo, useEffect, useState } from "react";
-import { Checkbox } from "../ui/checkbox";
-import { ChevronRight, Dot } from "lucide-react";
-import { cn } from "~/lib/utils";
-import { FilterCategory, NestedFilter } from "~/lib/types/filter";
 import { useFetcher } from "@remix-run/react";
+import { ChevronRight, Dot } from "lucide-react";
+import { memo, useEffect, useState } from "react";
+import { FilterCategory, NestedFilter } from "~/lib/types/filter";
+import { cn } from "~/lib/utils";
+import { Checkbox } from "../ui/checkbox";
 
 export const FilterItem = memo(
   ({
@@ -38,10 +38,7 @@ export const FilterItem = memo(
         <div className="flex items-center gap-2">
           <Checkbox checked={selected} onCheckedChange={setSelected} />
           <div className="grow">
-            {filter.name}{" "}
-            <span className="text-foreground-weaken-2 text-sm">
-              ({filter.count})
-            </span>
+            {filter.name} <span className="text-foreground-weaken-2 text-sm">({filter.count})</span>
           </div>
           {filter.hasChildren ? (
             <ChevronRight
@@ -69,18 +66,16 @@ export const FilterItem = memo(
         {expanded && (
           <div className="pl-4">
             {filter.children &&
-              filter.children.map((child) => (
+              filter.children.map(child => (
                 <FilterItem
                   key={child.name}
                   filter={child}
                   filterPath={[...filterPath, child.name]}
                   filterCategoryName={filterCategoryName}
-                  onFilterChanged={(f) => {
+                  onFilterChanged={f => {
                     onFilterChanged({
                       ...filter,
-                      children: filter.children!.map((ff) =>
-                        ff.name === f.name ? f : ff,
-                      ),
+                      children: filter.children!.map(ff => (ff.name === f.name ? f : ff)),
                     });
                   }}
                 />
@@ -98,30 +93,26 @@ export interface FilterCardProps {
   onFilterChanged: (filter: FilterCategory) => void;
 }
 
-export const FilterCardHeader = memo(
-  ({ filter: { displayName } }: FilterCardProps) => (
-    <div className="py-3 px-4">
-      <div className="text-lg font-semibold">{displayName}</div>
-    </div>
-  ),
-);
+export const FilterCardHeader = memo(({ filter: { displayName } }: FilterCardProps) => (
+  <div className="py-3 px-4">
+    <div className="text-lg font-semibold">{displayName}</div>
+  </div>
+));
 FilterCardHeader.displayName = "FilterCardHeader";
 
 export const FilterCardContent = memo(
   ({ filter: filterCategory, onFilterChanged }: FilterCardProps) => (
     <div className="p-4 flex flex-col gap-2">
-      {filterCategory.filters.map((filter) => (
+      {filterCategory.filters.map(filter => (
         <FilterItem
           key={filter.name}
           filter={filter}
           filterPath={[filter.name]}
           filterCategoryName={filterCategory.name}
-          onFilterChanged={(f) => {
+          onFilterChanged={f => {
             onFilterChanged({
               ...filterCategory,
-              filters: filterCategory.filters.map((ff) =>
-                ff.name === f.name ? f : ff,
-              ),
+              filters: filterCategory.filters.map(ff => (ff.name === f.name ? f : ff)),
             });
           }}
         />

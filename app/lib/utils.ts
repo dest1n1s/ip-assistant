@@ -12,9 +12,7 @@ export function mapWithDivider<T, U>(
 ) {
   return arr.reduce<U[]>(
     (acc, item, index) =>
-      index > 0
-        ? [...acc, dividerFn(item, index), fn(item, index)]
-        : [fn(item, index)],
+      index > 0 ? [...acc, dividerFn(item, index), fn(item, index)] : [fn(item, index)],
     [],
   );
 }

@@ -1,5 +1,5 @@
-import { env } from "~/lib/config";
 import { MongoClient, ServerApiVersion } from "mongodb";
+import { env } from "~/lib/config";
 
 const mongoClient = new MongoClient(env.mongodbUrl, {
   serverApi: {

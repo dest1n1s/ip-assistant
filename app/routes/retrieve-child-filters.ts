@@ -11,7 +11,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
   const result = await retrieveChildFilters(filterCategoryName, filterPath);
   // console.log(result);
-  return result.map((filter) => ({
+  return result.map(filter => ({
     ...filter,
     selected: false,
   }));

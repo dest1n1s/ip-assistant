@@ -1,13 +1,6 @@
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "@remix-run/react";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
+import "katex/dist/katex.min.css";
 import "./tailwind.css";
-import 'katex/dist/katex.min.css';
-
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

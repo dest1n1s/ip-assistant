@@ -2,31 +2,30 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useSubmit } from "@remix-run/react";
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
+import { CaseCard } from "~/components/app/case-card";
+import { FilterCard } from "~/components/app/filter-card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { retrieveChildFilters, search } from "~/lib/database/case.server";
-import { FilterCard } from "~/components/app/filter-card";
-import { mapWithDivider } from "~/lib/utils";
-import { CaseCard } from "~/components/app/case-card";
-import { CaseSchema } from "~/lib/types/case";
 import {
   Pagination,
   PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationLink,
   PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
   PaginationNext,
+  PaginationPrevious,
 } from "~/components/ui/pagination";
+import { retrieveChildFilters, search } from "~/lib/database/case.server";
+import { CaseSchema } from "~/lib/types/case";
+import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
+import { mapWithDivider } from "~/lib/utils";
 
 export const meta: MetaFunction = () => {
   return [
     { title: "知识产权助手" },
     {
       name: "description",
-      content:
-        "使用争议焦点、法律问题、案情描述等内容检索相关案例、法规、观点。",
+      content: "使用争议焦点、法律问题、案情描述等内容检索相关案例、法规、观点。",
     },
   ];
 };
@@ -40,7 +39,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const filter = {
     name: "cause",
     displayName: "案由",
-    filters: (await retrieveChildFilters("cause", [])).map((f) => ({
+    filters: (await retrieveChildFilters("cause", [])).map(f => ({
       ...f,
       selected: false,
     })),
@@ -77,14 +76,14 @@ export default function Index() {
           placeholder="输入争议焦点、法律问题、案情描述..."
           name="q"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={e => setQ(e.target.value)}
           tabIndex={-1}
           endContent={
             <Button variant="ghost" size="icon" type="submit">
               <Search />
             </Button>
           }
-          onKeyUp={(e) => {
+          onKeyUp={e => {
             if (e.key === "Enter") {
               submit(form.current!);
             }
@@ -102,10 +101,7 @@ export default function Index() {
               <CaseCard key={c.id} serialNumber={i + 1} case={c} />
             ),
             (_, i) => (
-              <div
-                key={`divider-${i}`}
-                className="border-b border-border"
-              ></div>
+              <div key={`divider-${i}`} className="border-b border-border"></div>
             ),
           )}
           <div className="border-b border-border"></div>

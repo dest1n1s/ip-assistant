@@ -3,24 +3,16 @@ import { memo } from "react";
 import { Case } from "~/lib/types/case";
 import { isTruthy } from "~/lib/types/guards";
 import { mapWithDivider } from "~/lib/utils";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "../ui/hover-card";
 
-import katex from 'katex'
+import katex from "katex";
 
 export const ContentBlock = memo(({ content }: { content: string }) => {
-  const paragraphs = content
-    .split("\n")
-    .map((paragraph) => <p key={paragraph}>{paragraph}</p>);
+  const paragraphs = content.split("\n").map(paragraph => <p key={paragraph}>{paragraph}</p>);
   return (
     <div className="p-8 bg-secondary max-h-60 overflow-y-scroll scrollbar">
-      <div className="text-md prose lg:prose-lg max-w-[100ch]">
-        {paragraphs}
-      </div>
+      <div className="text-md prose lg:prose-lg max-w-[100ch]">{paragraphs}</div>
     </div>
   );
 });
@@ -98,15 +90,12 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
           <div className="text-md text-foreground-weaken-1 flex gap-1.5">
             {mapWithDivider(
               additionalInfos,
-              (cur) => (
+              cur => (
                 <div key={cur}>{cur}</div>
               ),
               (_, i) => (
-                <div
-                  key={`divider-${i}`}
-                  className="border-r border-border"
-                ></div>
-              )
+                <div key={`divider-${i}`} className="border-r border-border"></div>
+              ),
             )}
           </div>
         </div>

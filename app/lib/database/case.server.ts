@@ -1,12 +1,8 @@
+import fs from "fs";
 import { env } from "../config";
 import { Case } from "../types/case";
 import { db, mongoConnectPromise } from "./mongo.server";
-import {
-  getFilterPipeline,
-  getHybridSearchPipeline,
-  getSearchPipeline,
-} from "./pipelines.server";
-import fs from "fs";
+import { getFilterPipeline, getHybridSearchPipeline, getSearchPipeline } from "./pipelines.server";
 
 export const search = async (
   query?: string,
@@ -17,19 +13,16 @@ export const search = async (
 ) => {
   await mongoConnectPromise;
   if (query) {
-    const vector: number[] = await fetch(
-      `${env.embeddingInferenceUrl}/generate_embedding/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: query }),
+    const vector: number[] = await fetch(`${env.embeddingInferenceUrl}/generate_embedding/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    )
-      .then((response) => response.json())
-      .then((data) => data.embedding)
-      .catch((error) => console.error("Error:", error));
+      body: JSON.stringify({ text: query }),
+    })
+      .then(response => response.json())
+      .then(data => data.embedding)
+      .catch(error => console.error("Error:", error));
     const pipeline = getHybridSearchPipeline(
       {
         text: query,
@@ -47,8 +40,8 @@ export const search = async (
       .collection("caseEmbeddings")
       .aggregate(pipeline)
       .toArray()
-      .then((result) => {
-        return result.map((r) => ({
+      .then(result => {
+        return result.map(r => ({
           textScore: r.textScore,
           vectorScore: r.vectorScore,
           sortScore: r.sortScore,
@@ -61,10 +54,7 @@ export const search = async (
   }
 };
 
-export const retrieveChildFilters = async (
-  category: string,
-  path: string[],
-) => {
+export const retrieveChildFilters = async (category: string, path: string[]) => {
   await mongoConnectPromise;
   const cases = db.collection<Case>("case");
   const result = await cases

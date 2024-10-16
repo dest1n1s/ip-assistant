@@ -6,7 +6,7 @@ export const getHybridSearchPipeline = (
   filter?: { category: string; name: string }[],
   scoreThreshold = 1,
   limit = 10,
-  skip = 0
+  skip = 0,
 ) => {
   // Vector search pipeline on 'caseEmbeddings' collection
   const vectorSearchPipeline = query
@@ -107,7 +107,7 @@ export const getHybridSearchPipeline = (
       ? [
           {
             $match: {
-              $and: filter.map((f) => ({
+              $and: filter.map(f => ({
                 [`case.${f.category}`]: f.name,
               })),
             },
@@ -124,7 +124,7 @@ export const getSearchPipeline = (
   filter?: { category: string; name: string }[],
   scoreThreshold = 1,
   limit = 10,
-  skip = 0
+  skip = 0,
 ) => {
   return [
     {
@@ -135,7 +135,7 @@ export const getSearchPipeline = (
         {
           $expr: {
             $and: [
-              ...(filter?.map((f) => ({
+              ...(filter?.map(f => ({
                 $in: [f.name, `$${f.category}`],
               })) || []),
             ],

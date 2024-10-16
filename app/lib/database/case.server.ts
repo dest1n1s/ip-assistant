@@ -2,7 +2,7 @@ import fs from "fs";
 import { env } from "../config";
 import { Case } from "../types/case";
 import { db, mongoConnectPromise } from "./mongo.server";
-import { getFilterPipeline, getHybridSearchPipeline, getSearchPipeline } from "./pipelines.server";
+import { getFilterPipeline, getHybridSearchPipeline, getSearchPipeline } from "./pipelines";
 
 export const search = async (
   query?: string,

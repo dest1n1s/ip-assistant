@@ -47,7 +47,7 @@ export const FilterItem = memo(
             <ChevronRight
               className={cn(
                 "transform transition-transform cursor-pointer",
-                expanded && "rotate-90"
+                expanded && "rotate-90",
               )}
               onClick={() => {
                 setExpanded(!expanded);
@@ -57,7 +57,7 @@ export const FilterItem = memo(
                       filterCategoryName: filterCategoryName,
                       filterPath: filterPath.join("|"),
                     },
-                    { action: "retrieve-child-filters" }
+                    { action: "retrieve-child-filters" },
                   );
                 }
               }}
@@ -79,7 +79,7 @@ export const FilterItem = memo(
                     onFilterChanged({
                       ...filter,
                       children: filter.children!.map((ff) =>
-                        ff.name === f.name ? f : ff
+                        ff.name === f.name ? f : ff,
                       ),
                     });
                   }}
@@ -89,7 +89,7 @@ export const FilterItem = memo(
         )}
       </div>
     );
-  }
+  },
 );
 FilterItem.displayName = "FilterItem";
 
@@ -103,7 +103,7 @@ export const FilterCardHeader = memo(
     <div className="py-3 px-4">
       <div className="text-lg font-semibold">{displayName}</div>
     </div>
-  )
+  ),
 );
 FilterCardHeader.displayName = "FilterCardHeader";
 
@@ -120,14 +120,14 @@ export const FilterCardContent = memo(
             onFilterChanged({
               ...filterCategory,
               filters: filterCategory.filters.map((ff) =>
-                ff.name === f.name ? f : ff
+                ff.name === f.name ? f : ff,
               ),
             });
           }}
         />
       ))}
     </div>
-  )
+  ),
 );
 FilterCardContent.displayName = "FilterCardContent";
 

@@ -4,6 +4,13 @@ import { Case } from "~/lib/types/case";
 import { isTruthy } from "~/lib/types/guards";
 import { mapWithDivider } from "~/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../ui/hover-card";
+
+import katex from 'katex'
 
 export const ContentBlock = memo(({ content }: { content: string }) => {
   const paragraphs = content
@@ -51,6 +58,8 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
     return [];
   });
 
+  const latex = String.raw`${c.sortScore?.toFixed(2)} = \underbrace{${c.textScore?.toFixed(2)}}_{\text{Full-Text Score}} + 10 \times \underbrace{${c.vectorScore?.toFixed(2)}}_{\text{Vector Score}}`;
+
   return (
     <div className="p-4 flex flex-col gap-4 items-start text-foreground bg-surface">
       <div className="flex gap-2 items-start">
@@ -64,10 +73,24 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
                 {c.type}
               </div>
             )}
-            {c.searchScore && (
-              <div className="bg-yellow-500 text-primary-foreground py-1 px-2 shrink-0 text-sm">
-                {c.searchScore.toFixed(2)}
-              </div>
+            {c.sortScore && (
+              <HoverCard>
+                <HoverCardTrigger>
+                  <div className="bg-yellow-500 text-primary-foreground py-1 px-2 shrink-0 text-sm">
+                    {c.sortScore.toFixed(2)}
+                  </div>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-min py-0">
+                  <div
+                    className="w-min"
+                    dangerouslySetInnerHTML={{
+                      __html: katex.renderToString(latex, {
+                        displayMode: true,
+                      }),
+                    }}
+                  />
+                </HoverCardContent>
+              </HoverCard>
             )}
             <div className="text-lg font-semibold">{c.title}</div>
           </div>

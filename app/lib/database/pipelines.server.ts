@@ -55,14 +55,14 @@ export const getHybridSearchPipeline = (
           $search: {
             text: {
               query: query.text,
-              path: ["title", "content"],
+              path: ["title", { wildcard: "content.*" }],
             },
           },
         },
         {
           $project: {
             _id: 0,
-            caseId: { $toString: "$_id" }, // Ensure 'caseId' matches type
+            caseId: "$_id",
             searchScore: { $meta: "searchScore" },
             case: "$$ROOT", // Include the entire document
             source: "text",
@@ -99,9 +99,7 @@ export const getHybridSearchPipeline = (
     {
       $set: {
         sortScore: {
-          $sqrt: {
-            $add: [{ $multiply: [10, "$vectorScore"] }, "$textScore"],
-          },
+          $add: [{ $multiply: [10, "$vectorScore"] }, "$textScore"],
         },
       },
     },

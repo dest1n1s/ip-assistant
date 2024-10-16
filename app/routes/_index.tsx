@@ -45,7 +45,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       selected: false,
     })),
   };
-  return { cases, filter, page };
+  return { cases, filter, page, q };
 }
 
 export default function Index() {
@@ -58,19 +58,26 @@ export default function Index() {
   const submit = useSubmit();
   const [filter, setFilter] = useState<FilterCategory>(loaderFilter);
 
+  const [q, setQ] = useState(loaderData.q);
+
   useEffect(() => {
     setFilter(loaderFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaderData.filter]);
+
+  useEffect(() => {
+    setQ(loaderData.q);
+  }, [loaderData.q]);
 
   return (
     <div className="font-sans p-16 container flex flex-col gap-8">
-      <Form ref={form}>
+      <Form ref={form} method="get">
         <Input
           className="px-6 rounded-full border-2 border-primary"
           inputClassName="py-3 text-lg"
           placeholder="输入争议焦点、法律问题、案情描述..."
           name="q"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
           tabIndex={-1}
           endContent={
             <Button variant="ghost" size="icon" type="submit">
@@ -87,7 +94,6 @@ export default function Index() {
       <div className="flex gap-8">
         <div className="flex basis-80 flex-col gap-4 shrink-0">
           <FilterCard filter={filter} onFilterChanged={setFilter} />
-          {/* <FilterCard filter={filter} onFilterChanged={setFilter} /> */}
         </div>
         <div className="flex grow flex-col">
           {mapWithDivider(
@@ -100,7 +106,7 @@ export default function Index() {
                 key={`divider-${i}`}
                 className="border-b border-border"
               ></div>
-            )
+            ),
           )}
           <div className="border-b border-border"></div>
           <div className="p-2 flex gap-4 items-start text-foreground bg-surface">

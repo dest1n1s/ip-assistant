@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Form, useLoaderData, useSubmit } from "@remix-run/react";
+import { Form, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CaseCard } from "~/components/app/case-card";
@@ -43,9 +43,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .getAll("qFilters")
     .map(f => f.split(":"))
     .map(([category, name]) => ({ category, name }));
-  const page = parseInt(url.searchParams.get("page") || "0");
+  const page = parseInt(url.searchParams.get("page") || "1");
   const pageSize = parseInt(url.searchParams.get("pageSize") || "10");
-  const cases = await search(q, qFilters, 1, pageSize, page);
+  const cases = await search(q, qFilters, 1, pageSize, page - 1);
   const unfetchedFilters = [
     {
       name: "cause",
@@ -83,14 +83,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       };
     }),
   );
-  return { cases, filters, page, q, qFilters };
+  return { cases, filters, q, qFilters, page, pageSize };
 }
 
 export default function Index() {
   const loaderData = useLoaderData<typeof loader>();
   const cases = CaseSchema.array().parse(loaderData.cases);
   const loaderFilters = FilterCategorySchema.array().parse(loaderData.filters);
-  const page = loaderData.page;
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const form = useRef<HTMLFormElement>(null);
   const submit = useSubmit();
@@ -163,13 +163,26 @@ export default function Index() {
     });
   }, [filters]);
 
+  const getPageSearch = useCallback(
+    (page: number) => {
+      const searchParamsNew = new URLSearchParams(searchParams);
+      searchParamsNew.set("page", page.toString());
+      return `?${searchParamsNew.toString()}`;
+    },
+    [q, qFilters],
+  );
+
   const casesArea = useMemo(
     () => (
       <div className="flex grow flex-col">
         {mapWithDivider(
           cases,
           (c, i) => (
-            <CaseCard key={c.id} serialNumber={i + 1} case={c} />
+            <CaseCard
+              key={c.id}
+              serialNumber={(loaderData.page - 1) * loaderData.pageSize + i + 1}
+              case={c}
+            />
           ),
           (_, i) => (
             <div key={`divider-${i}`} className="border-b border-border"></div>
@@ -180,24 +193,42 @@ export default function Index() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious to="#" />
+                <PaginationPrevious
+                  to={{
+                    search: getPageSearch(Math.max(loaderData.page - 1, 1)),
+                  }}
+                ></PaginationPrevious>
               </PaginationItem>
+              {loaderData.page > 2 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
               <PaginationItem>
-                <PaginationLink href="#">1</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#" isActive>
-                  2
-                </PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#">3</PaginationLink>
+                {[
+                  Math.max(loaderData.page - 1, 1),
+                  Math.max(loaderData.page - 1, 1) + 1,
+                  Math.max(loaderData.page - 1, 1) + 2,
+                ].map(page => (
+                  <PaginationLink
+                    to={{
+                      search: getPageSearch(page),
+                    }}
+                    isActive={loaderData.page == page}
+                  >
+                    {page}
+                  </PaginationLink>
+                ))}
               </PaginationItem>
               <PaginationItem>
                 <PaginationEllipsis />
               </PaginationItem>
               <PaginationItem>
-                <PaginationNext href="#" />
+                <PaginationNext
+                  to={{
+                    search: getPageSearch(loaderData.page + 1),
+                  }}
+                />
               </PaginationItem>
             </PaginationContent>
           </Pagination>

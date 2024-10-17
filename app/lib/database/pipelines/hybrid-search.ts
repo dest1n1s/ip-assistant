@@ -1,3 +1,4 @@
+import fs from "fs";
 import { getFilterMatchPhase } from "./filter-match";
 
 export const getHybridSearchPipeline = (
@@ -73,6 +74,9 @@ export const getHybridSearchPipeline = (
     : [];
 
   const matchPhase = filters ? getFilterMatchPhase(filters, "case.") : [];
+
+  // Write pipeline to file
+  fs.writeFileSync("pipeline.json", JSON.stringify(matchPhase, null, 2));
 
   // Combine both pipelines using $unionWith
   return [

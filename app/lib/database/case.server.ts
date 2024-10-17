@@ -1,12 +1,17 @@
-import fs from "fs";
 import { env } from "../config";
 import { Case } from "../types/case";
 import { db, mongoConnectPromise } from "./mongo.server";
-import { getFilterPipeline, getHybridSearchPipeline, getSearchPipeline } from "./pipelines";
+import {
+  getChildFiltersPipeline,
+  getFiltersPipeline,
+  getHybridSearchPipeline,
+  getSearchPipeline,
+  getTimeFiltersPipeline,
+} from "./pipelines";
 
 export const search = async (
   query?: string,
-  filter?: { category: string; name: string }[],
+  filters?: { category: string; name: string }[],
   scoreThreshold = 3,
   pageSize = 10,
   page = 0,
@@ -28,13 +33,11 @@ export const search = async (
         text: query,
         vector,
       },
-      filter,
+      filters,
       scoreThreshold,
       pageSize,
       page * pageSize,
     );
-    // Write pipeline to file
-    fs.writeFileSync("pipeline.json", JSON.stringify(pipeline, null, 2));
 
     return db
       .collection("caseEmbeddings")
@@ -49,7 +52,7 @@ export const search = async (
         }));
       });
   } else {
-    const pipeline = getSearchPipeline(filter, scoreThreshold, pageSize, page);
+    const pipeline = getSearchPipeline(filters, scoreThreshold, pageSize, page);
     return db.collection("case").aggregate(pipeline).toArray();
   }
 };
@@ -62,7 +65,31 @@ export const retrieveChildFilters = async (category: string, path: string[]) => 
       name: string;
       count: number;
       hasChildren: boolean;
-    }>(getFilterPipeline(category, path))
+    }>(getChildFiltersPipeline(category, path))
     .toArray();
   return result;
+};
+
+export const retrieveFilters = async (category: string) => {
+  await mongoConnectPromise;
+  const cases = db.collection<Case>("case");
+  const result = await cases
+    .aggregate<{
+      name: string;
+      count: number;
+    }>(getFiltersPipeline(category))
+    .toArray();
+  return result.filter(r => r.name).map(r => ({ ...r, hasChildren: false }));
+};
+
+export const retrieveTimeFilters = async (category: string) => {
+  await mongoConnectPromise;
+  const cases = db.collection<Case>("case");
+  const result = await cases
+    .aggregate<{
+      name: string;
+      count: number;
+    }>(getTimeFiltersPipeline(category))
+    .toArray();
+  return result.map(r => ({ ...r, hasChildren: false, displayName: `${r.name} 年` }));
 };

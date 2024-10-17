@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const NestedFilterSchema: z.ZodType<NestedFilter> = z.object({
   name: z.string(),
+  displayName: z.string().optional(),
   count: z.number(),
   selected: z.boolean(),
   hasChildren: z.boolean(),
@@ -10,6 +11,7 @@ export const NestedFilterSchema: z.ZodType<NestedFilter> = z.object({
 
 export interface NestedFilter {
   name: string;
+  displayName?: string;
   count: number;
   selected: boolean;
   hasChildren: boolean;

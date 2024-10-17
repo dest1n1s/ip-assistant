@@ -4,11 +4,12 @@ import { cn } from "~/lib/utils";
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   inputClassName?: string;
+  startContent?: React.ReactNode;
   endContent?: React.ReactNode;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, inputClassName, endContent, ...props }, ref) => {
+  ({ className, type, inputClassName, startContent, endContent, ...props }, ref) => {
     return (
       <div
         className={cn(
@@ -16,9 +17,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className,
         )}
       >
+        {startContent}
         <input
           className={cn(
-            "py-2 !outline-none w-full text-sm bg-transparent disabled:cursor-not-allowed disabled:opacity-50",
+            "py-2 !outline-none grow text-sm bg-transparent disabled:cursor-not-allowed disabled:opacity-50",
             inputClassName,
           )}
           type={type}

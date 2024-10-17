@@ -30,7 +30,6 @@ export const FilterItem = memo(
           children: fetcher.data,
         });
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fetcher.data]);
 
     return (
@@ -38,7 +37,8 @@ export const FilterItem = memo(
         <div className="flex items-center gap-2">
           <Checkbox checked={selected} onCheckedChange={setSelected} />
           <div className="grow">
-            {filter.name} <span className="text-foreground-weaken-2 text-sm">({filter.count})</span>
+            {filter.displayName || filter.name}{" "}
+            <span className="text-foreground-weaken-2 text-sm">({filter.count})</span>
           </div>
           {filter.hasChildren ? (
             <ChevronRight
@@ -102,7 +102,7 @@ FilterCardHeader.displayName = "FilterCardHeader";
 
 export const FilterCardContent = memo(
   ({ filter: filterCategory, onFilterChanged }: FilterCardProps) => (
-    <div className="p-4 flex flex-col gap-2">
+    <div className="p-4 flex flex-col gap-2 overflow-y-scroll scrollbar">
       {filterCategory.filters.map(filter => (
         <FilterItem
           key={filter.name}
@@ -123,7 +123,7 @@ export const FilterCardContent = memo(
 FilterCardContent.displayName = "FilterCardContent";
 
 export const FilterCard = memo((props: FilterCardProps) => (
-  <div className="flex flex-col bg-surface shadow text-foreground-weaken-1 select-none">
+  <div className="flex flex-col bg-surface shadow text-foreground-weaken-1 select-none max-h-80">
     <FilterCardHeader {...props} />
     <div className="border-b border-input" />
     <FilterCardContent {...props} />

@@ -50,7 +50,10 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
     return [];
   });
 
-  const latex = String.raw`${c.sortScore?.toFixed(2)} = \underbrace{${c.textScore?.toFixed(2)}}_{\text{Full-Text Score}} + 10 \times \underbrace{${c.vectorScore?.toFixed(3)}}_{\text{Vector Score}}`;
+  const textScore = (c.textScore || 0) * (c.textScore || 0);
+  const vectorScore = (c.vectorScore || 0) * (c.vectorScore || 0) * 100;
+
+  const latex = String.raw`${c.sortScore?.toFixed(2)} = \underbrace{${textScore.toFixed(2)}}_{\text{Full-Text Score}} + \underbrace{${vectorScore.toFixed(2)}}_{\text{Vector Score}}`;
 
   return (
     <div className="p-4 flex flex-col gap-4 items-start text-foreground bg-surface">

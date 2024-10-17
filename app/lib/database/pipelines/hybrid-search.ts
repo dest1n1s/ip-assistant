@@ -57,7 +57,13 @@ export const getHybridSearchPipeline = (
           $search: {
             text: {
               query: query.text,
-              path: ["title", { wildcard: "content.*" }],
+              path: [
+                "title",
+                "name",
+                "subtitle",
+                { wildcard: "keywords.*" },
+                { wildcard: "content.*" },
+              ],
             },
           },
         },
@@ -106,7 +112,10 @@ export const getHybridSearchPipeline = (
     {
       $set: {
         sortScore: {
-          $add: [{ $multiply: [10, "$vectorScore"] }, "$textScore"],
+          $add: [
+            { $pow: ["$textScore", 2] }, // textScore^2
+            { $pow: [{ $multiply: [10, "$vectorScore"] }, 2] }, // (10 * vectorScore)^2
+          ],
         },
       },
     },

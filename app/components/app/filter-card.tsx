@@ -102,7 +102,7 @@ FilterCardHeader.displayName = "FilterCardHeader";
 
 export const FilterCardContent = memo(
   ({ filter: filterCategory, onFilterChanged }: FilterCardProps) => (
-    <div className="p-4 flex flex-col gap-2 overflow-y-scroll scrollbar">
+    <div className="p-4 flex flex-col gap-2 overflow-y-scroll scrollbar scrollbar-transparent">
       {filterCategory.filters.map(filter => (
         <FilterItem
           key={filter.name}

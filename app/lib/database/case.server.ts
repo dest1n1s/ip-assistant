@@ -93,3 +93,9 @@ export const retrieveTimeFilters = async (category: string) => {
     .toArray();
   return result.map(r => ({ ...r, hasChildren: false, displayName: `${r.name} 年` }));
 };
+
+export const getCase = async (caseId: string) => {
+  await mongoConnectPromise;
+  const cases = db.collection<Case>("case");
+  return cases.findOne({ id: caseId });
+};

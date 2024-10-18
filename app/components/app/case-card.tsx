@@ -6,6 +6,7 @@ import { mapWithDivider } from "~/lib/utils";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
+import { Link } from "@remix-run/react";
 import katex from "katex";
 
 export const ContentBlock = memo(({ content }: { content: string }) => {
@@ -87,7 +88,9 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
                 </HoverCardContent>
               </HoverCard>
             )}
-            <div className="text-lg font-semibold">{c.title}</div>
+            <Link to={`/case/${c.id}`} className="grow">
+              <div className="text-lg font-semibold hover:underline">{c.title}</div>
+            </Link>
           </div>
 
           <div className="text-md text-foreground-weaken-1 flex gap-1.5">

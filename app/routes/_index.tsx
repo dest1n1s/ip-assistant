@@ -211,6 +211,7 @@ export default function Index() {
                   Math.max(loaderData.page - 1, 1) + 2,
                 ].map(page => (
                   <PaginationLink
+                    key={page}
                     to={{
                       search: getPageSearch(page),
                     }}

@@ -3,7 +3,7 @@ import { ActionFunctionArgs } from "@remix-run/node";
 import { getCase } from "~/lib/database/case.server";
 import { openai } from "~/lib/openai.server";
 
-import { OpenAIStream, StreamingTextResponse } from "ai";
+import { streamText } from "ai";
 
 const SYSTEM_PROMPT = `
 你是一名专门负责总结复杂法律案件的中文法律助理。你的主要任务是从详细的法律文件中提取并总结关键信息，包括核心问题、审判程序、法院判决及相关的法律原则，并以简明清晰的方式呈现。
@@ -53,17 +53,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!caseData) {
     return new Response("Case Not Found", { status: 404 });
   }
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: generateUserPrompt(caseData) },
-    ],
-    stream: true,
+  const result = await streamText({
+    model: openai("gpt-4o"),
+    maxRetries: 3,
+    system: SYSTEM_PROMPT,
+    prompt: generateUserPrompt(caseData),
   });
 
-  // Convert the response into a friendly text-stream
-  const stream = OpenAIStream(response);
-  // Respond with the stream
-  return new StreamingTextResponse(stream);
+  return result.toDataStreamResponse();
 }

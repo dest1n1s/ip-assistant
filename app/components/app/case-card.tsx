@@ -7,6 +7,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/hover-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 import { Link } from "@remix-run/react";
+import { Skeleton } from "components/ui/skeleton";
 import katex from "katex";
 
 export const ContentBlock = memo(({ content }: { content: string }) => {
@@ -88,7 +89,7 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
                 </HoverCardContent>
               </HoverCard>
             )}
-            <Link to={`/case/${c.id}`} className="grow">
+            <Link to={`/case/${c.name}`} className="grow">
               <div className="text-lg font-semibold hover:underline">{c.title}</div>
             </Link>
           </div>
@@ -126,3 +127,29 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
   );
 });
 CaseCard.displayName = "CaseCard";
+
+export const CaseCardSkeleton = memo(() => {
+  return (
+    <div className="p-4 flex flex-col gap-4 items-start text-foreground bg-surface">
+      <div className="flex gap-2 items-start w-full">
+        <Skeleton className="bg-primary text-primary-lighten-1 h-7 w-7 flex justify-center items-center shrink-0" />
+        <div className="flex flex-col gap-2 grow">
+          <div className="flex gap-2   items-start">
+            <Skeleton className="h-7 grow" />
+          </div>
+
+          <div className="text-md text-foreground-weaken-1 flex gap-1.5">
+            <Skeleton className="grow h-4" />
+            <Skeleton className="grow h-4" />
+            <Skeleton className="grow h-4" />
+          </div>
+        </div>
+      </div>
+      <div className="w-full">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-24 w-full mt-2" />
+      </div>
+    </div>
+  );
+});
+CaseCardSkeleton.displayName = "CaseCardSkeleton";

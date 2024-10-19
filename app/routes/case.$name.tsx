@@ -1,25 +1,31 @@
-import { LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData } from "@remix-run/react";
+import { defer, LoaderFunctionArgs } from "@remix-run/node";
+import { Await, Link, useLoaderData } from "@remix-run/react";
 import { useChat } from "ai/react";
 import { format } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
-import { getCase } from "~/lib/database/case.server";
-import { CaseSchema } from "~/lib/types/case";
+import { Spinner } from "~/components/ui/spinner";
+import { getCase, search } from "~/lib/database/case.server";
+import { Case, CaseSchema } from "~/lib/types/case";
 import { isTruthy } from "~/lib/types/guards";
 import { mapWithDivider } from "~/lib/utils";
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const id = params.id;
-  if (!id) {
+  const name = params.name;
+  if (!name) {
     return new Response("Bad Request", { status: 400 });
   }
 
-  const caseData = await getCase(id);
+  const caseData = await getCase(name);
   if (!caseData) {
     return new Response("Case Not Found", { status: 404 });
   }
-
-  return { case: caseData };
+  const relatedCases = caseData.content.basicCase
+    ? search(caseData.content.basicCase, [], 1, 4, 0).then(cases =>
+        cases.filter(c => c.name !== caseData.name),
+      )
+    : [];
+  return defer({ case: caseData, relatedCases });
 }
 
 const contentType = {
@@ -41,39 +47,27 @@ function useEffectOnce(fn: () => void) {
 }
 
 const Summary = ({ caseData }: { caseData: any }) => {
-  const { messages, handleSubmit } = useChat({
-    api: `/case/${caseData.id}/summary`,
+  const { messages, handleSubmit, isLoading } = useChat({
+    api: `/case/${caseData.name}/summary`,
   });
   useEffectOnce(() => {
     handleSubmit({}, { allowEmptySubmit: true });
   });
   return (
-    <>
+    <div className="flex flex-col gap-4 bg-surface shadow p-8">
       <h2 className="text-2xl font-bold text-foreground">AI 摘要</h2>
       {messages.length > 0 && (
         <Markdown className="prose">{messages[messages.length - 1].content}</Markdown>
       )}
-    </>
+      <Spinner show={isLoading} size="large" className="w-12 h-12" />
+    </div>
   );
 };
 
 export default function CasePage() {
-  const loaderData = useLoaderData<typeof loader>();
+  const loaderData: { case: Case; relatedCases: never[] | Promise<Case[]> } =
+    useLoaderData<typeof loader>();
   const c = CaseSchema.parse(loaderData.case);
-
-  const [messages, setMessages] = useState<string[]>([]);
-  // const lastMessage = useEventSource(`/case/${c.id}/summary`);
-  // useEffect(
-  //   function saveMessage() {
-  //     console.log(lastMessage);
-  //     setMessages(current => {
-  //       if (typeof lastMessage === "string") return current.concat(lastMessage);
-  //       return current;
-  //     });
-  //   },
-  //   [lastMessage],
-  // );
-
   const additionalInfos = [
     c.cause.length > 0 && c.cause[c.cause.length - 1],
     c.court,
@@ -142,8 +136,31 @@ export default function CasePage() {
             </div>
           ))}
         </div>
-        <div className="flex basis-80 max-w-80 flex-col shrink-0 bg-surface shadow p-8 gap-4 h-min">
+        <div className="flex flex-col gap-4 basis-80 max-w-80 shrink-0">
           <Summary caseData={c} />
+
+          <div className="flex flex-col gap-4 bg-surface shadow p-8">
+            <h2 className="text-2xl font-bold text-foreground">相关案例</h2>
+            <Suspense fallback={<Spinner size="large" className="w-12 h-12" />}>
+              <Await resolve={loaderData.relatedCases}>
+                {relatedCases =>
+                  relatedCases.length > 0 ? (
+                    mapWithDivider(
+                      relatedCases,
+                      (c: Case) => (
+                        <Link key={c.name} to={`/case/${c.name}`} className="hover:underline">
+                          {c.title}
+                        </Link>
+                      ),
+                      (_, i) => <div key={`divider-${i}`} className="border-b border-border"></div>,
+                    )
+                  ) : (
+                    <div>暂无相关案例</div>
+                  )
+                }
+              </Await>
+            </Suspense>
+          </div>
         </div>
       </div>
     </div>

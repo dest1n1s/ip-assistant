@@ -44,12 +44,12 @@ ${JSON.stringify(caseData, null, 2)}
 };
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const id = params.id;
-  if (!id) {
+  const name = params.name;
+  if (!name) {
     return new Response("Bad Request", { status: 400 });
   }
 
-  const caseData = await getCase(id);
+  const caseData = await getCase(name);
   if (!caseData) {
     return new Response("Case Not Found", { status: 404 });
   }

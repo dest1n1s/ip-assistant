@@ -1,8 +1,16 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Form, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
+import {
+  Await,
+  defer,
+  Form,
+  useLoaderData,
+  useNavigation,
+  useSearchParams,
+  useSubmit,
+} from "@remix-run/react";
 import { Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CaseCard } from "~/components/app/case-card";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CaseCard, CaseCardSkeleton } from "~/components/app/case-card";
 import { FilterCard } from "~/components/app/filter-card";
 import { FilterChip } from "~/components/app/filter-chip";
 import { Button } from "~/components/ui/button";
@@ -16,14 +24,15 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "~/components/ui/pagination";
+import { Spinner } from "~/components/ui/spinner";
 import {
   retrieveChildFilters,
   retrieveFilters,
   retrieveTimeFilters,
   search,
 } from "~/lib/database/case.server";
-import { CaseSchema } from "~/lib/types/case";
-import { FilterCategory, FilterCategorySchema, NestedFilter } from "~/lib/types/filter";
+import { Case, CaseSchema } from "~/lib/types/case";
+import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
 import { mapWithDivider } from "~/lib/utils";
 
 export const meta: MetaFunction = () => {
@@ -45,7 +54,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .map(([category, name]) => ({ category, name }));
   const page = parseInt(url.searchParams.get("page") || "1");
   const pageSize = parseInt(url.searchParams.get("pageSize") || "10");
-  const cases = await search(q, qFilters, 1, pageSize, page - 1);
+  const cases: Promise<Case[]> = search(q, qFilters, 1, pageSize, page - 1);
   const unfetchedFilters = [
     {
       name: "cause",
@@ -83,12 +92,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
       };
     }),
   );
-  return { cases, filters, q, qFilters, page, pageSize };
+  return defer({ cases, filters, q, qFilters, page, pageSize });
 }
 
 export default function Index() {
   const loaderData = useLoaderData<typeof loader>();
-  const cases = CaseSchema.array().parse(loaderData.cases);
   const loaderFilters = FilterCategorySchema.array().parse(loaderData.filters);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -111,7 +119,6 @@ export default function Index() {
     setSelectedFilters(loaderData.qFilters);
   }, [loaderData.qFilters]);
 
-
   const getPageSearch = useCallback(
     (page: number) => {
       const searchParamsNew = new URLSearchParams(searchParams);
@@ -121,22 +128,52 @@ export default function Index() {
     [searchParams],
   );
 
+  const navigation = useNavigation();
+  console.log(navigation);
+
   const casesArea = useMemo(
     () => (
       <div className="flex grow flex-col">
-        {mapWithDivider(
-          cases,
-          (c, i) => (
-            <CaseCard
-              key={c.id}
-              serialNumber={(loaderData.page - 1) * loaderData.pageSize + i + 1}
-              case={c}
-            />
-          ),
-          (_, i) => (
-            <div key={`divider-${i}`} className="border-b border-border"></div>
-          ),
-        )}
+        <Suspense
+          fallback={mapWithDivider(
+            new Array(loaderData.pageSize).fill(0),
+            (_, i) => (
+              <CaseCardSkeleton key={i} />
+            ),
+            (_, i) => (
+              <div key={`divider-${i}`} className="border-b border-border"></div>
+            ),
+          )}
+        >
+          <Await resolve={loaderData.cases}>
+            {cases => (
+              <>
+                <Spinner
+                  show={
+                    navigation.location?.pathname === "/" &&
+                    navigation.formMethod === "GET" &&
+                    navigation.state === "loading"
+                  }
+                  size="large"
+                  className="w-12 h-12 mb-8"
+                />
+                {mapWithDivider(
+                  CaseSchema.array().parse(cases),
+                  (c, i) => (
+                    <CaseCard
+                      key={c.name}
+                      serialNumber={(loaderData.page - 1) * loaderData.pageSize + i + 1}
+                      case={c}
+                    />
+                  ),
+                  (_, i) => (
+                    <div key={`divider-${i}`} className="border-b border-border"></div>
+                  ),
+                )}
+              </>
+            )}
+          </Await>
+        </Suspense>
         <div className="border-b border-border"></div>
         <div className="p-2 flex gap-4 items-start text-foreground bg-surface">
           <Pagination>
@@ -185,7 +222,7 @@ export default function Index() {
         </div>
       </div>
     ),
-    [cases],
+    [loaderData, navigation],
   );
 
   const startContent = useMemo(
@@ -196,13 +233,17 @@ export default function Index() {
           filter={{
             category: f.category,
             name: f.name,
-            categoryDisplayName: filters
-              .find(fc => fc.name === f.category)?.displayName || "未知分类",
+            categoryDisplayName:
+              filters.find(fc => fc.name === f.category)?.displayName || "未知分类",
           }}
           name="qFilters"
           className="mr-2"
           onClick={filter => {
-            setSelectedFilters(selectedFilters.filter(sf => sf.category !== filter.category || sf.name !== filter.name));
+            setSelectedFilters(
+              selectedFilters.filter(
+                sf => sf.category !== filter.category || sf.name !== filter.name,
+              ),
+            );
           }}
         />
       )),
@@ -240,12 +281,16 @@ export default function Index() {
               key={filter.name}
               filter={filter}
               onFilterChanged={f => setFilters(filters.map(ff => (ff.name === f.name ? f : ff)))}
-              selectedFilters={selectedFilters.filter(sf => sf.category === filter.name).map(sf => sf.name)}
+              selectedFilters={selectedFilters
+                .filter(sf => sf.category === filter.name)
+                .map(sf => sf.name)}
               onSelectedFiltersChange={selectedFiltersInCategory =>
                 setSelectedFilters(
                   selectedFilters
                     .filter(sf => sf.category !== filter.name)
-                    .concat(selectedFiltersInCategory.map(f => ({ category: filter.name, name: f }))),
+                    .concat(
+                      selectedFiltersInCategory.map(f => ({ category: filter.name, name: f })),
+                    ),
                 )
               }
             />

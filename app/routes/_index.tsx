@@ -95,52 +95,8 @@ export default function Index() {
   const form = useRef<HTMLFormElement>(null);
   const submit = useSubmit();
 
-  const mapFilters = useCallback(
-    (fn: (f: NestedFilter) => NestedFilter, filters: NestedFilter[]): NestedFilter[] => {
-      return filters.map(f => {
-        if (f.children) {
-          return {
-            ...fn(f),
-            children: mapFilters(fn, f.children),
-          };
-        }
-        return fn(f);
-      });
-    },
-    [],
-  );
-
-  const flattenFilters = useCallback((filters: NestedFilter[]): NestedFilter[] => {
-    return filters.flatMap(f => {
-      if (f.children) {
-        return [f, ...flattenFilters(f.children)];
-      }
-      return [f];
-    });
-  }, []);
-
-  const fillFilters = useCallback(
-    (filterCategories: FilterCategory[], qFilters: { category: string; name: string }[]) => {
-      const filtered = filterCategories.map(fc => {
-        const qFiltersInCategory = qFilters.filter(qf => qf.category === fc.name);
-        return {
-          ...fc,
-          filters: mapFilters(
-            f => ({
-              ...f,
-              selected: qFiltersInCategory.some(qf => qf.name === f.name),
-            }),
-            fc.filters,
-          ),
-        };
-      });
-      return filtered;
-    },
-    [],
-  );
-
   const [filters, setFilters] = useState<FilterCategory[]>(loaderFilters);
-
+  const [selectedFilters, setSelectedFilters] = useState<{ category: string; name: string }[]>([]);
   const [q, setQ] = useState(loaderData.q);
 
   useEffect(() => {
@@ -152,16 +108,9 @@ export default function Index() {
   }, [loaderData.q]);
 
   useEffect(() => {
-    setFilters(fillFilters(loaderFilters, loaderData.qFilters));
+    setSelectedFilters(loaderData.qFilters);
   }, [loaderData.qFilters]);
 
-  const qFilters = useMemo(() => {
-    return filters.flatMap(fc => {
-      return flattenFilters(fc.filters)
-        .filter(f => f.selected)
-        .map(f => ({ category: fc.name, categoryDisplayName: fc.displayName, name: f.name }));
-    });
-  }, [filters]);
 
   const getPageSearch = useCallback(
     (page: number) => {
@@ -169,7 +118,7 @@ export default function Index() {
       searchParamsNew.set("page", page.toString());
       return `?${searchParamsNew.toString()}`;
     },
-    [q, qFilters],
+    [searchParams],
   );
 
   const casesArea = useMemo(
@@ -241,23 +190,23 @@ export default function Index() {
 
   const startContent = useMemo(
     () =>
-      qFilters.map(f => (
+      selectedFilters.map(f => (
         <FilterChip
           key={`${f.category}:${f.name}`}
-          filter={f}
+          filter={{
+            category: f.category,
+            name: f.name,
+            categoryDisplayName: filters
+              .find(fc => fc.name === f.category)?.displayName || "未知分类",
+          }}
           name="qFilters"
           className="mr-2"
           onClick={filter => {
-            setFilters(
-              fillFilters(
-                filters,
-                qFilters.filter(qf => qf.category !== filter.category || qf.name !== filter.name),
-              ),
-            );
+            setSelectedFilters(selectedFilters.filter(sf => sf.category !== filter.category || sf.name !== filter.name));
           }}
         />
       )),
-    [qFilters],
+    [selectedFilters],
   );
 
   return (
@@ -291,6 +240,14 @@ export default function Index() {
               key={filter.name}
               filter={filter}
               onFilterChanged={f => setFilters(filters.map(ff => (ff.name === f.name ? f : ff)))}
+              selectedFilters={selectedFilters.filter(sf => sf.category === filter.name).map(sf => sf.name)}
+              onSelectedFiltersChange={selectedFiltersInCategory =>
+                setSelectedFilters(
+                  selectedFilters
+                    .filter(sf => sf.category !== filter.name)
+                    .concat(selectedFiltersInCategory.map(f => ({ category: filter.name, name: f }))),
+                )
+              }
             />
           ))}
         </div>

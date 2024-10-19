@@ -9,20 +9,28 @@ export const FilterItem = memo(
   ({
     filter,
     filterPath,
+    selectedFilters,
+    onSelectedFiltersChange,
     filterCategoryName,
     onFilterChanged,
   }: {
     filter: NestedFilter;
     filterPath: string[];
+    selectedFilters: string[];
+    onSelectedFiltersChange: (selectedFilters: string[]) => void;
     filterCategoryName: string;
     onFilterChanged: (filter: NestedFilter) => void;
   }) => {
     const fetcher = useFetcher<NestedFilter[]>();
     const [expanded, setExpanded] = useState(false);
-    const selected = filter.selected;
-    const setSelected = (v: boolean) => {
-      onFilterChanged({ ...filter, selected: v });
-    };
+
+    const selected = selectedFilters.includes(filter.name);
+    const onSelectedChange = () => {
+      onSelectedFiltersChange(
+        selected ? selectedFilters.filter(f => f !== filter.name) : [...selectedFilters, filter.name],
+      );
+    }
+
     useEffect(() => {
       if (fetcher.data) {
         onFilterChanged({
@@ -35,7 +43,7 @@ export const FilterItem = memo(
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Checkbox checked={selected} onCheckedChange={setSelected} />
+          <Checkbox checked={selected} onCheckedChange={onSelectedChange} />
           <div className="grow">
             {filter.displayName || filter.name}{" "}
             <span className="text-foreground-weaken-2 text-sm">({filter.count})</span>
@@ -72,6 +80,8 @@ export const FilterItem = memo(
                   filter={child}
                   filterPath={[...filterPath, child.name]}
                   filterCategoryName={filterCategoryName}
+                  selectedFilters={selectedFilters}
+                  onSelectedFiltersChange={onSelectedFiltersChange}
                   onFilterChanged={f => {
                     onFilterChanged({
                       ...filter,
@@ -91,6 +101,8 @@ FilterItem.displayName = "FilterItem";
 export interface FilterCardProps {
   filter: FilterCategory;
   onFilterChanged: (filter: FilterCategory) => void;
+  selectedFilters: string[];
+  onSelectedFiltersChange: (selectedFilters: string[]) => void;
 }
 
 export const FilterCardHeader = memo(({ filter: { displayName } }: FilterCardProps) => (
@@ -101,7 +113,7 @@ export const FilterCardHeader = memo(({ filter: { displayName } }: FilterCardPro
 FilterCardHeader.displayName = "FilterCardHeader";
 
 export const FilterCardContent = memo(
-  ({ filter: filterCategory, onFilterChanged }: FilterCardProps) => (
+  ({ filter: filterCategory, onFilterChanged, selectedFilters, onSelectedFiltersChange }: FilterCardProps) => (
     <div className="p-4 flex flex-col gap-2 overflow-y-scroll scrollbar scrollbar-transparent">
       {filterCategory.filters.map(filter => (
         <FilterItem
@@ -109,6 +121,8 @@ export const FilterCardContent = memo(
           filter={filter}
           filterPath={[filter.name]}
           filterCategoryName={filterCategory.name}
+          selectedFilters={selectedFilters}
+          onSelectedFiltersChange={onSelectedFiltersChange}
           onFilterChanged={f => {
             onFilterChanged({
               ...filterCategory,

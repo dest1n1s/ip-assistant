@@ -129,7 +129,6 @@ export default function Index() {
   );
 
   const navigation = useNavigation();
-  console.log(navigation);
 
   const casesArea = useMemo(
     () => (

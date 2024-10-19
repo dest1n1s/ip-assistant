@@ -34,11 +34,11 @@ const contentType = {
   judgmentSummary: "判决结果",
 };
 
-function useEffectOnce(fn: () => void) {
+function useEffectOnce(fn: () => () => void) {
   const ref = useRef(false);
   useEffect(() => {
-    if (ref.current) {
-      fn();
+    if (ref.current || process.env.NODE_ENV !== "development") {
+      return fn();
     }
     return () => {
       ref.current = true;
@@ -47,11 +47,12 @@ function useEffectOnce(fn: () => void) {
 }
 
 const Summary = ({ caseData }: { caseData: any }) => {
-  const { messages, handleSubmit, isLoading } = useChat({
+  const { messages, handleSubmit, isLoading, stop } = useChat({
     api: `/case/${caseData.name}/summary`,
   });
   useEffectOnce(() => {
     handleSubmit({}, { allowEmptySubmit: true });
+    return stop;
   });
   return (
     <div className="flex flex-col gap-4 bg-surface shadow p-8">

@@ -1,4 +1,4 @@
-import { getFilterMatchPhase, getFilterMQL } from "./filter-match";
+import { getFilterMatchPhase, getFilterMQL, getSearchFilterPhase } from "./filter-match";
 
 export const getHybridSearchPipeline = (
   query: {
@@ -62,15 +62,22 @@ export const getHybridSearchPipeline = (
       ? [
           {
             $search: {
-              text: {
-                query: query.text,
-                path: [
-                  "title",
-                  "name",
-                  "subtitle",
-                  { wildcard: "keywords.*" },
-                  { wildcard: "content.*" },
+              compound: {
+                must: [
+                  {
+                    text: {
+                      query: query.text,
+                      path: [
+                        "title",
+                        "name",
+                        "subtitle",
+                        { wildcard: "keywords.*" },
+                        { wildcard: "content.*" },
+                      ],
+                    },
+                  },
                 ],
+                filter: filters ? getSearchFilterPhase(filters) : [],
               },
             },
           },

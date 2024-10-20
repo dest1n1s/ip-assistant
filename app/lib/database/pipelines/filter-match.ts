@@ -75,3 +75,72 @@ export const getFilterMatchPhase = (
     },
   ];
 };
+
+export const getSearchFilterPhase = (
+  filters: Filter[],
+  categoryPrefix: string = "",
+): Record<string, any>[] => {
+  const getFilterCondition = ({ category, name }: Filter): Record<string, any> => {
+    if (category === "cause") {
+      return {
+        compound: {
+          filter: [{ in: { path: `${categoryPrefix}${category}`, value: [name] } }],
+        },
+      };
+    } else if (category === "judgedAt") {
+      return {
+        compound: {
+          filter: [
+            {
+              range: {
+                path: `${categoryPrefix}${category}`,
+                gte: new Date(`${name}-01-01`),
+                lt: new Date(`${parseInt(name) + 1}-01-01`),
+              },
+            },
+          ],
+        },
+      };
+    } else {
+      return {
+        compound: {
+          filter: [{ equals: { path: `${categoryPrefix}${category}`, value: name } }],
+        },
+      };
+    }
+  };
+
+  if (filters.length === 0) return [];
+
+  // Group filters by category
+  const filtersByCategory = filters.reduce<Record<string, Filter[]>>((acc, filter) => {
+    const { category } = filter;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(filter);
+    return acc;
+  }, {});
+
+  const mustConditions: Record<string, any>[] = [];
+
+  // For each category, generate conditions and place them accordingly
+  Object.entries(filtersByCategory).forEach(([category, filtersInCategory]) => {
+    if (filtersInCategory.length === 1) {
+      // If only one filter for this category, no need for $or or compound logic
+      const condition = getFilterCondition(filtersInCategory[0]);
+      mustConditions.push(condition);
+    } else {
+      // Multiple conditions for the category, combine them with "should" (equivalent to $or)
+      const shouldConditions = filtersInCategory.map(getFilterCondition);
+      mustConditions.push({
+        compound: {
+          should: shouldConditions.map(c => c.compound.filter[0]),
+          minimumShouldMatch: 1,
+        },
+      });
+    }
+  });
+
+  return mustConditions;
+};

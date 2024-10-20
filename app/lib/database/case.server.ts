@@ -74,7 +74,7 @@ export const search = async (config: {
       scoreThreshold,
       pageSize,
       page * pageSize,
-      "vector-only",
+      type,
     );
 
     writeFileSync("pipeline.json", JSON.stringify(pipeline, null, 2));
@@ -93,17 +93,13 @@ export const search = async (config: {
       });
 
     cache.set(cacheKey, result);
-    logger.info(
-      `[search] Query: ${config.query || "Empty"}, Filters: ${JSON.stringify(config.filters)}. End.`,
-    );
+    logger.info(`[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. End.`);
     return result;
   } else {
     const pipeline = getSearchPipeline(filters, scoreThreshold, pageSize, page);
     const result = (await db.collection("case").aggregate(pipeline).toArray()) as Case[];
     cache.set(cacheKey, result);
-    logger.info(
-      `[search] Query: ${config.query || "Empty"}, Filters: ${JSON.stringify(config.filters)}. End.`,
-    );
+    logger.info(`[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. End.`);
     return result;
   }
 };

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const CaseSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
   court: z.string(),
   judgedAt: z.coerce.date(),
   name: z.string(),
@@ -10,7 +10,7 @@ export const CaseSchema = z.object({
   type: z.string().optional(),
   title: z.string(),
   subtitle: z.string().optional(),
-  keywords: z.array(z.string()),
+  keywords: z.array(z.string()).optional(),
   content: z.record(z.string(), z.string()),
   relatedLaw: z.string().optional(),
   relationalIndex: z.string().optional(),

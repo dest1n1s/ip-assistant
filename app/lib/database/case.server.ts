@@ -8,6 +8,7 @@ import {
   getSearchPipeline,
   getTimeFiltersPipeline,
 } from "./pipelines";
+import { writeFileSync } from "fs";
 
 export const search = async (
   query?: string,
@@ -15,6 +16,7 @@ export const search = async (
   scoreThreshold = 3,
   pageSize = 10,
   page = 0,
+  type: "vector-only" | "text-only" | "hybrid" = "hybrid",
 ) => {
   await mongoConnectPromise;
   if (query) {
@@ -37,7 +39,10 @@ export const search = async (
       scoreThreshold,
       pageSize,
       page * pageSize,
+      type,
     );
+
+    writeFileSync("pipeline.json", JSON.stringify(pipeline, null, 2));
 
     return db
       .collection("caseEmbeddings")

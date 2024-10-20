@@ -21,7 +21,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return new Response("Case Not Found", { status: 404 });
   }
   const relatedCases = caseData.content.basicCase
-    ? search(caseData.content.basicCase, [], 1, 4, 0).then(cases =>
+    ? search(caseData.content.basicCase, [], 1, 4, 0, "vector-only").then(cases =>
         cases.filter(c => c.name !== caseData.name),
       )
     : [];

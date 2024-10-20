@@ -2,7 +2,7 @@ import fs from "fs";
 import { getFilterMatchPhase } from "./filter-match";
 
 export const getHybridSearchPipeline = (
-  query?: {
+  query: {
     text: string;
     vector: number[];
   },
@@ -10,8 +10,9 @@ export const getHybridSearchPipeline = (
   scoreThreshold = 1,
   limit = 10,
   skip = 0,
+  type: "vector-only" | "text-only" | "hybrid" = "hybrid",
 ) => {
-  const vectorSearchPipeline = query
+  const vectorSearchPipeline = type === "vector-only"|| type === "hybrid"
     ? [
         {
           $vectorSearch: {
@@ -19,7 +20,7 @@ export const getHybridSearchPipeline = (
             path: "bgeM3Embedding",
             queryVector: query.vector,
             numCandidates: 150,
-            limit: limit,
+            limit: limit + skip,
           },
         },
         {
@@ -48,10 +49,14 @@ export const getHybridSearchPipeline = (
           },
         },
       ]
-    : [];
+    : [
+      {
+        $match: { _id: { $eq: null } } // No documents will have _id as null
+      }
+    ]
 
   // Text search pipeline on 'case' collection
-  const textSearchPipeline = query
+  const textSearchPipeline = type === "text-only" || type === "hybrid"
     ? [
         {
           $search: {
@@ -68,6 +73,9 @@ export const getHybridSearchPipeline = (
           },
         },
         {
+          $limit: limit + skip,
+        },
+        {
           $project: {
             _id: 0,
             caseId: "$_id",
@@ -77,12 +85,13 @@ export const getHybridSearchPipeline = (
           },
         },
       ]
-    : [];
+    : [
+      {
+        $match: { _id: { $eq: null } } // No documents will have _id as null
+      }
+    ]
 
   const matchPhase = filters ? getFilterMatchPhase(filters, "case.") : [];
-
-  // Write pipeline to file
-  fs.writeFileSync("pipeline.json", JSON.stringify(matchPhase, null, 2));
 
   // Combine both pipelines using $unionWith
   return [

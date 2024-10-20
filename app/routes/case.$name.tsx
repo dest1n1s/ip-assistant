@@ -29,9 +29,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 const contentType = {
-  basicCase: "基本案情",
-  judgeReason: "判决理由",
+  basicCase1: "一审本院查明",
+  plaintiffDefendantView1: "一审原被告观点",
+  judgeResult1: "一审判决结果",
+  basicCase: "本院查明",
+  plaintiffDefendantView: "原被告观点",
+  trialProcess: "审理经过",
+  judgeReason: "本院认为",
+  judgeResult: "裁判结果",
   judgmentSummary: "判决结果",
+  notificationOfRights: "权利告知",
 };
 
 function useEffectOnce(fn: () => () => void) {
@@ -90,6 +97,12 @@ export default function CasePage() {
       name: "关联索引",
       content: c.relationalIndex.split("\n").filter(isTruthy).join("\n\n"),
     },
+    c.legislationIDsCited &&
+      c.legislationIDsCited.length > 0 && {
+        key: "legislationIDsCited",
+        name: "引用法规",
+        content: c.legislationIDsCited.map(id => `- ${id}`).join("\n"),
+      },
   ].filter(isTruthy);
 
   return (

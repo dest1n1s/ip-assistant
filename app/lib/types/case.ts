@@ -14,6 +14,7 @@ export const CaseSchema = z.object({
   content: z.record(z.string(), z.string()),
   relatedLaw: z.string().optional(),
   relationalIndex: z.string().optional(),
+  legislationIDsCited: z.string().array().optional(),
   textScore: z.number().optional(),
   vectorScore: z.number().optional(),
   sortScore: z.number().optional(),

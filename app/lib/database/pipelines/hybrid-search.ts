@@ -1,4 +1,3 @@
-import fs from "fs";
 import { getFilterMatchPhase } from "./filter-match";
 
 export const getHybridSearchPipeline = (
@@ -12,84 +11,86 @@ export const getHybridSearchPipeline = (
   skip = 0,
   type: "vector-only" | "text-only" | "hybrid" = "hybrid",
 ) => {
-  const vectorSearchPipeline = type === "vector-only"|| type === "hybrid"
-    ? [
-        {
-          $vectorSearch: {
-            index: "vector_index_bge_m3",
-            path: "bgeM3Embedding",
-            queryVector: query.vector,
-            numCandidates: 150,
-            limit: limit + skip,
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            caseId: 1,
-            searchScore: { $meta: "vectorSearchScore" },
-            source: "vector",
-          },
-        },
-        {
-          $lookup: {
-            from: "case",
-            localField: "caseId",
-            foreignField: "_id",
-            as: "case",
-          },
-        },
-        { $unwind: "$case" },
-        {
-          $project: {
-            caseId: 1,
-            searchScore: 1,
-            case: "$case", // Include the entire case document
-            source: 1,
-          },
-        },
-      ]
-    : [
-      {
-        $match: { _id: { $eq: null } } // No documents will have _id as null
-      }
-    ]
-
-  // Text search pipeline on 'case' collection
-  const textSearchPipeline = type === "text-only" || type === "hybrid"
-    ? [
-        {
-          $search: {
-            text: {
-              query: query.text,
-              path: [
-                "title",
-                "name",
-                "subtitle",
-                { wildcard: "keywords.*" },
-                { wildcard: "content.*" },
-              ],
+  const vectorSearchPipeline =
+    type === "vector-only" || type === "hybrid"
+      ? [
+          {
+            $vectorSearch: {
+              index: "vector_index_bge_m3",
+              path: "bgeM3Embedding",
+              queryVector: query.vector,
+              numCandidates: 150,
+              limit: limit + skip,
             },
           },
-        },
-        {
-          $limit: limit + skip,
-        },
-        {
-          $project: {
-            _id: 0,
-            caseId: "$_id",
-            searchScore: { $meta: "searchScore" },
-            case: "$$ROOT", // Include the entire document
-            source: "text",
+          {
+            $project: {
+              _id: 0,
+              caseId: 1,
+              searchScore: { $meta: "vectorSearchScore" },
+              source: "vector",
+            },
           },
-        },
-      ]
-    : [
-      {
-        $match: { _id: { $eq: null } } // No documents will have _id as null
-      }
-    ]
+          {
+            $lookup: {
+              from: "case",
+              localField: "caseId",
+              foreignField: "_id",
+              as: "case",
+            },
+          },
+          { $unwind: "$case" },
+          {
+            $project: {
+              caseId: 1,
+              searchScore: 1,
+              case: "$case", // Include the entire case document
+              source: 1,
+            },
+          },
+        ]
+      : [
+          {
+            $match: { _id: { $eq: null } }, // No documents will have _id as null
+          },
+        ];
+
+  // Text search pipeline on 'case' collection
+  const textSearchPipeline =
+    type === "text-only" || type === "hybrid"
+      ? [
+          {
+            $search: {
+              text: {
+                query: query.text,
+                path: [
+                  "title",
+                  "name",
+                  "subtitle",
+                  { wildcard: "keywords.*" },
+                  { wildcard: "content.*" },
+                ],
+              },
+            },
+          },
+          {
+            $limit: limit + skip,
+          },
+          {
+            $project: {
+              _id: 0,
+              caseId: "$_id",
+              searchScore: { $meta: "searchScore" },
+              case: "$$ROOT", // Include the entire document
+              source: "text",
+            },
+          },
+        ]
+      : [
+          {
+            $match: { _id: { $eq: null } }, // No documents will have _id as null
+          },
+        ];
 
   const matchPhase = filters ? getFilterMatchPhase(filters, "case.") : [];
 

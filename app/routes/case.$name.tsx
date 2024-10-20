@@ -21,7 +21,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return new Response("Case Not Found", { status: 404 });
   }
   const relatedCases = caseData.content.basicCase
-    ? search(caseData.content.basicCase, [], 1, 4, 0, "vector-only").then(cases =>
+    ? search({ query: caseData.content.basicCase, pageSize: 4, type: "vector-only" }).then(cases =>
         cases.filter(c => c.name !== caseData.name),
       )
     : [];
@@ -97,7 +97,7 @@ export default function CasePage() {
       <div className="flex gap-8">
         <div className="flex flex-col bg-surface shadow p-8 gap-4">
           <h1 className="text-3xl font-bold text-foreground">{c.title}</h1>
-          <div className="text-md text-foreground-weaken-1 flex gap-3">
+          <div className="text-md text-foreground-weaken-1 flex gap-3 flex-wrap">
             {mapWithDivider(
               additionalInfos,
               cur => (
@@ -111,7 +111,7 @@ export default function CasePage() {
           <div className="flex flex-col select-none max-h-80 border border-input">
             <div className="p-4 font-bold bg-blue-200">案由</div>
             <div className="border-b border-input" />
-            <div className="p-4 flex gap-1">
+            <div className="p-4 flex gap-1 flex-wrap">
               {mapWithDivider(
                 c.cause,
                 cur => (

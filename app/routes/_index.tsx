@@ -54,7 +54,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .map(([category, name]) => ({ category, name }));
   const page = parseInt(url.searchParams.get("page") || "1");
   const pageSize = parseInt(url.searchParams.get("pageSize") || "10");
-  const cases: Promise<Case[]> = search(q, qFilters, 1, pageSize, page - 1);
+  const cases: Promise<Case[]> = search({ query: q, filters: qFilters, pageSize, page: page - 1 });
   const unfetchedFilters = [
     {
       name: "cause",

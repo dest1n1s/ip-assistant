@@ -94,7 +94,7 @@ export const CaseCard = memo(({ serialNumber, case: c }: CaseCardProps) => {
             </Link>
           </div>
 
-          <div className="text-md text-foreground-weaken-1 flex gap-1.5">
+          <div className="text-md text-foreground-weaken-1 flex gap-1.5 flex-wrap">
             {mapWithDivider(
               additionalInfos,
               cur => (

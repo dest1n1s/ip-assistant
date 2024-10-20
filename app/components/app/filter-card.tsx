@@ -27,9 +27,11 @@ export const FilterItem = memo(
     const selected = selectedFilters.includes(filter.name);
     const onSelectedChange = () => {
       onSelectedFiltersChange(
-        selected ? selectedFilters.filter(f => f !== filter.name) : [...selectedFilters, filter.name],
+        selected
+          ? selectedFilters.filter(f => f !== filter.name)
+          : [...selectedFilters, filter.name],
       );
-    }
+    };
 
     useEffect(() => {
       if (fetcher.data) {
@@ -43,7 +45,7 @@ export const FilterItem = memo(
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Checkbox checked={selected} onCheckedChange={onSelectedChange} />
+          <Checkbox className="shrink-0" checked={selected} onCheckedChange={onSelectedChange} />
           <div className="grow">
             {filter.displayName || filter.name}{" "}
             <span className="text-foreground-weaken-2 text-sm">({filter.count})</span>
@@ -51,7 +53,7 @@ export const FilterItem = memo(
           {filter.hasChildren ? (
             <ChevronRight
               className={cn(
-                "transform transition-transform cursor-pointer",
+                "transform transition-transform cursor-pointer shrink-0",
                 expanded && "rotate-90",
               )}
               onClick={() => {
@@ -68,11 +70,11 @@ export const FilterItem = memo(
               }}
             />
           ) : (
-            <Dot />
+            <Dot className="shrink-0" />
           )}
         </div>
         {expanded && (
-          <div className="pl-4">
+          <div className="pl-4 flex flex-col gap-2">
             {filter.children &&
               filter.children.map(child => (
                 <FilterItem
@@ -113,7 +115,12 @@ export const FilterCardHeader = memo(({ filter: { displayName } }: FilterCardPro
 FilterCardHeader.displayName = "FilterCardHeader";
 
 export const FilterCardContent = memo(
-  ({ filter: filterCategory, onFilterChanged, selectedFilters, onSelectedFiltersChange }: FilterCardProps) => (
+  ({
+    filter: filterCategory,
+    onFilterChanged,
+    selectedFilters,
+    onSelectedFiltersChange,
+  }: FilterCardProps) => (
     <div className="p-4 flex flex-col gap-2 overflow-y-scroll scrollbar scrollbar-transparent">
       {filterCategory.filters.map(filter => (
         <FilterItem

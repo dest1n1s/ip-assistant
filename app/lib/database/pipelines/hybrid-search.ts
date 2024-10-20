@@ -1,4 +1,4 @@
-import { getFilterMatchPhase } from "./filter-match";
+import { getFilterMatchPhase, getFilterMQL } from "./filter-match";
 
 export const getHybridSearchPipeline = (
   query: {
@@ -19,6 +19,7 @@ export const getHybridSearchPipeline = (
               index: "vector_index_bge_m3",
               path: "bgeM3Embedding",
               queryVector: query.vector,
+              filters: filters ? getFilterMQL(filters) : {},
               numCandidates: 150,
               limit: limit + skip,
             },

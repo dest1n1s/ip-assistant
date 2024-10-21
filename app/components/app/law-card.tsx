@@ -3,6 +3,7 @@ import { Link } from "@remix-run/react";
 import { Skeleton } from "components/ui/skeleton";
 import katex from "katex";
 import { memo } from "react";
+import { isTruthy } from "~/lib/types/guards";
 import { Law } from "~/lib/types/law";
 
 export interface LawCardProps {
@@ -26,6 +27,8 @@ export const LawCard = ({ serialNumber, law }: LawCardProps) => {
   }));
 
   const latex = String.raw`${law.sortScore?.toFixed(2)} = \underbrace{${textScore.toFixed(2)}}_{\text{Full-Text Score}} + \underbrace{${vectorScore.toFixed(2)}}_{\text{Vector Score}}`;
+
+  const intro = [law.introduction, law.notification].filter(isTruthy).join(" ");
 
   return (
     <div className="p-4 flex flex-col gap-4 items-start text-foreground bg-surface">
@@ -58,8 +61,8 @@ export const LawCard = ({ serialNumber, law }: LawCardProps) => {
               <div className="text-lg font-semibold hover:underline">{law.title}</div>
             </Link>
           </div>
-          {law.introduction && (
-            <div className="text-md line-clamp-3 text-gray-700">{law.introduction}...</div>
+          {intro && (
+            <div className="text-md line-clamp-3 text-gray-700">{intro}...</div>
           )}
           {matchedContents && (
             <div className="text-md flex flex-col gap-4 py-2  ">

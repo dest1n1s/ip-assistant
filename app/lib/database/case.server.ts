@@ -1,16 +1,18 @@
 import { writeFileSync } from "fs";
 import { cache } from "../cache.server";
-import { env } from "../config";
 import { logger } from "../logging.server";
 import { Case } from "../types/case";
+import { Law } from "../types/law";
 import { db, mongoConnectPromise } from "./mongo.server";
 import {
   getChildFiltersPipeline,
   getFiltersPipeline,
   getHybridSearchPipeline,
+  getLawHybridSearchPipeline,
   getSearchPipeline,
   getTimeFiltersPipeline,
 } from "./pipelines";
+import { generateEmbedding } from "./vector.server";
 
 export const search = async (config: {
   query?: string;
@@ -21,7 +23,6 @@ export const search = async (config: {
   type?: "vector-only" | "text-only" | "hybrid";
 }): Promise<Case[]> => {
   const filterString = config.filters?.map(f => `${f.category}:${f.name}`).join(",") || "Empty";
-  logger.info(`[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. Start.`);
 
   const {
     query,
@@ -38,32 +39,14 @@ export const search = async (config: {
     logger.info(`[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. Cache hit.`);
     return inCache;
   }
+  logger.info(`[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. Start.`);
 
   await mongoConnectPromise;
   if (query) {
-    const vector = await fetch(`${env.embeddingInferenceUrl}/generate_embedding/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text: query }),
-    })
-      .then(response => response.json())
-      .then(data => data.embedding as number[])
-      .catch(error => {
-        logger.error(
-          `[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. Error: ${error}`,
-        );
-        return null;
-      });
-
+    const vector = await generateEmbedding(query);
     if (!vector) {
       return [];
     }
-
-    logger.info(
-      `[search] Query: ${config.query || "Empty"}, Filters: ${filterString}. Vector generated.`,
-    );
 
     const pipeline = getHybridSearchPipeline(
       {
@@ -76,8 +59,6 @@ export const search = async (config: {
       page * pageSize,
       type,
     );
-
-    writeFileSync("pipeline.json", JSON.stringify(pipeline, null, 2));
 
     const result = await db
       .collection("caseEmbeddings")
@@ -104,11 +85,74 @@ export const search = async (config: {
   }
 };
 
-export const retrieveChildFilters = async (category: string, path: string[]) => {
-  logger.info(
-    `[retrieveChildFilters] Category: ${category}, Path: ${path.join("/") || "Empty"}. Start.`,
-  );
+export const searchForLaws = async (config: {
+  query?: string;
+  scoreThreshold?: number;
+  pageSize?: number;
+  page?: number;
+  type?: "vector-only" | "text-only" | "hybrid";
+}): Promise<Law[]> => {
+  const { query, scoreThreshold = 1, pageSize = 10, page = 0, type = "hybrid" } = config;
+  const cacheKey = JSON.stringify({ ...config, method: "searchForLaws" });
 
+  const inCache = cache.get<Law[]>(cacheKey);
+  if (inCache) {
+    logger.info(`[searchForLaws] Query: ${config.query || "Empty"}. Cache hit.`);
+    return inCache;
+  }
+  logger.info(`[searchForLaws] Query: ${config.query || "Empty"}. Start.`);
+
+  await mongoConnectPromise;
+  if (query) {
+    const vector = await generateEmbedding(query);
+    if (!vector) {
+      return [];
+    }
+
+    const pipeline = getLawHybridSearchPipeline(
+      {
+        text: query,
+        vector,
+      },
+      scoreThreshold,
+      pageSize,
+      page * pageSize,
+      type,
+    );
+
+    writeFileSync("pipeline.json", JSON.stringify(pipeline, null, 2));
+
+    const result = await db
+      .collection("lawContent")
+      .aggregate(pipeline)
+      .toArray()
+      .then(result => {
+        return result.map(r => ({
+          textScore: r.textScore,
+          vectorScore: r.vectorScore,
+          sortScore: r.sortScore,
+          path: r.path,
+          ...r.law,
+        }));
+      });
+
+    cache.set(cacheKey, result);
+    logger.info(`[searchForLaws] Query: ${config.query || "Empty"}. End.`);
+    return result;
+  } else {
+    const result = (await db
+      .collection<Law>("law")
+      .find()
+      .skip(page * pageSize)
+      .limit(pageSize)
+      .toArray()) as Law[];
+    cache.set(cacheKey, result);
+    logger.info(`[searchForLaws] Query: ${config.query || "Empty"}. End.`);
+    return result;
+  }
+};
+
+export const retrieveChildFilters = async (category: string, path: string[]) => {
   const cacheKey = JSON.stringify({ category, path, method: "retrieveChildFilters" });
   const inCache = cache.get<
     {
@@ -123,6 +167,10 @@ export const retrieveChildFilters = async (category: string, path: string[]) => 
     );
     return inCache;
   }
+
+  logger.info(
+    `[retrieveChildFilters] Category: ${category}, Path: ${path.join("/") || "Empty"}. Start.`,
+  );
 
   await mongoConnectPromise;
   const cases = db.collection<Case>("case");
@@ -142,7 +190,6 @@ export const retrieveChildFilters = async (category: string, path: string[]) => 
 };
 
 export const retrieveFilters = async (category: string) => {
-  logger.info(`[retrieveFilters] Category: ${category}. Start.`);
   const cacheKey = JSON.stringify({ category, method: "retrieveFilters" });
   const inCache = cache.get<
     {
@@ -155,6 +202,8 @@ export const retrieveFilters = async (category: string) => {
     logger.info(`[retrieveFilters] Category: ${category}. Cache hit.`);
     return inCache;
   }
+
+  logger.info(`[retrieveFilters] Category: ${category}. Start.`);
 
   await mongoConnectPromise;
   const cases = db.collection<Case>("case");
@@ -172,7 +221,6 @@ export const retrieveFilters = async (category: string) => {
 };
 
 export const retrieveTimeFilters = async (category: string) => {
-  logger.info(`[retrieveTimeFilters] Category: ${category}. Start.`);
   const cacheKey = JSON.stringify({ category });
   const inCache = cache.get<
     {
@@ -186,6 +234,7 @@ export const retrieveTimeFilters = async (category: string) => {
     logger.info(`[retrieveTimeFilters] Category: ${category}. Cache hit.`);
     return inCache;
   }
+  logger.info(`[retrieveTimeFilters] Category: ${category}. Start.`);
 
   await mongoConnectPromise;
   const cases = db.collection<Case>("case");
@@ -203,13 +252,13 @@ export const retrieveTimeFilters = async (category: string) => {
 };
 
 export const getCase = async (name: string) => {
-  logger.info(`[getCase] Name: ${name}. Start.`);
   const cacheKey = JSON.stringify({ name, method: "getCase" });
   const inCache = cache.get<Case>(cacheKey);
   if (inCache) {
     logger.info(`[getCase] Name: ${name}. Cache hit.`);
     return inCache;
   }
+  logger.info(`[getCase] Name: ${name}. Start.`);
 
   await mongoConnectPromise;
   const cases = db.collection<Case>("case");
@@ -217,5 +266,23 @@ export const getCase = async (name: string) => {
 
   cache.set(cacheKey, result);
   logger.info(`[getCase] Name: ${name}. End.`);
+  return result;
+};
+
+export const getLaw = async (title: string) => {
+  const cacheKey = JSON.stringify({ title, method: "getLaw" });
+  const inCache = cache.get<Law>(cacheKey);
+  if (inCache) {
+    logger.info(`[getLaw] Title: ${title}. Cache hit.`);
+    return inCache;
+  }
+  logger.info(`[getLaw] Title: ${title}. Start.`);
+
+  await mongoConnectPromise;
+  const laws = db.collection<Law>("law");
+  const result = laws.findOne({ title });
+
+  cache.set(cacheKey, result);
+  logger.info(`[getLaw] Title: ${title}. End.`);
   return result;
 };

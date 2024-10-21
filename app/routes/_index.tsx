@@ -4,6 +4,7 @@ import {
   defer,
   Form,
   useLoaderData,
+  useNavigate,
   useNavigation,
   useSearchParams,
   useSubmit,
@@ -13,6 +14,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { CaseCard, CaseCardSkeleton } from "~/components/app/case-card";
 import { FilterCard } from "~/components/app/filter-card";
 import { FilterChip } from "~/components/app/filter-chip";
+import { LawCard } from "~/components/app/law-card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -30,9 +32,11 @@ import {
   retrieveFilters,
   retrieveTimeFilters,
   search,
+  searchForLaws,
 } from "~/lib/database/case.server";
 import { Case, CaseSchema } from "~/lib/types/case";
 import { FilterCategory, FilterCategorySchema } from "~/lib/types/filter";
+import { Law } from "~/lib/types/law";
 import { mapWithDivider } from "~/lib/utils";
 
 export const meta: MetaFunction = () => {
@@ -52,9 +56,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .getAll("qFilters")
     .map(f => f.split(":"))
     .map(([category, name]) => ({ category, name }));
+  const collection = url.searchParams.get("collection") || "law";
   const page = parseInt(url.searchParams.get("page") || "1");
   const pageSize = parseInt(url.searchParams.get("pageSize") || "10");
-  const cases: Promise<Case[]> = search({ query: q, filters: qFilters, pageSize, page: page - 1 });
+  const cases: Promise<Case[]> | false =
+    collection === "case" && search({ query: q, filters: qFilters, pageSize, page: page - 1 });
+  const laws: Promise<Law[]> | false =
+    collection === "law" && searchForLaws({ query: q, pageSize, page: page - 1 });
   const unfetchedFilters = [
     {
       name: "cause",
@@ -92,7 +100,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       };
     }),
   );
-  return defer({ cases, filters, q, qFilters, page, pageSize });
+  return defer({ cases, laws, filters, q, qFilters, page, pageSize, collection });
 }
 
 export default function Index() {
@@ -106,6 +114,8 @@ export default function Index() {
   const [filters, setFilters] = useState<FilterCategory[]>(loaderFilters);
   const [selectedFilters, setSelectedFilters] = useState<{ category: string; name: string }[]>([]);
   const [q, setQ] = useState(loaderData.q);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     setFilters(loaderFilters);
@@ -128,99 +138,165 @@ export default function Index() {
     [searchParams],
   );
 
+  const getCollectionSearch = useCallback(
+    (collection: string) => {
+      const searchParamsNew = new URLSearchParams(searchParams);
+      // Reset page to 1 when switching collection
+      searchParamsNew.set("page", "1");
+      searchParamsNew.set("collection", collection);
+      return `?${searchParamsNew.toString()}`;
+    },
+    [searchParams],
+  );
+
   const navigation = useNavigation();
 
-  const casesArea = useMemo(
+  const pagination = useMemo(
     () => (
-      <div className="flex grow flex-col">
-        <Suspense
-          fallback={mapWithDivider(
-            new Array(loaderData.pageSize).fill(0),
-            (_, i) => (
-              <CaseCardSkeleton key={i} />
-            ),
-            (_, i) => (
-              <div key={`divider-${i}`} className="border-b border-border"></div>
-            ),
-          )}
-        >
-          <Await resolve={loaderData.cases}>
-            {cases => (
-              <>
-                <Spinner
-                  show={
-                    navigation.location?.pathname === "/" &&
-                    navigation.formMethod === "GET" &&
-                    navigation.state === "loading"
-                  }
-                  size="large"
-                  className="w-12 h-12 mb-8"
-                />
-                {mapWithDivider(
-                  CaseSchema.array().parse(cases),
-                  (c, i) => (
-                    <CaseCard
-                      key={c.name}
-                      serialNumber={(loaderData.page - 1) * loaderData.pageSize + i + 1}
-                      case={c}
-                    />
-                  ),
-                  (_, i) => (
-                    <div key={`divider-${i}`} className="border-b border-border"></div>
-                  ),
-                )}
-              </>
-            )}
-          </Await>
-        </Suspense>
-        <div className="border-b border-border"></div>
-        <div className="p-2 flex gap-4 items-start text-foreground bg-surface">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  to={{
-                    search: getPageSearch(Math.max(loaderData.page - 1, 1)),
-                  }}
-                ></PaginationPrevious>
-              </PaginationItem>
-              {loaderData.page > 2 && (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )}
-              <PaginationItem>
-                {[
-                  Math.max(loaderData.page - 1, 1),
-                  Math.max(loaderData.page - 1, 1) + 1,
-                  Math.max(loaderData.page - 1, 1) + 2,
-                ].map(page => (
-                  <PaginationLink
-                    key={page}
-                    to={{
-                      search: getPageSearch(page),
-                    }}
-                    isActive={loaderData.page == page}
-                  >
-                    {page}
-                  </PaginationLink>
-                ))}
-              </PaginationItem>
+      <div className="p-2 flex gap-4 items-start text-foreground bg-surface">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                to={{
+                  search: getPageSearch(Math.max(loaderData.page - 1, 1)),
+                }}
+              ></PaginationPrevious>
+            </PaginationItem>
+            {loaderData.page > 2 && (
               <PaginationItem>
                 <PaginationEllipsis />
               </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
+            )}
+            <PaginationItem>
+              {[
+                Math.max(loaderData.page - 1, 1),
+                Math.max(loaderData.page - 1, 1) + 1,
+                Math.max(loaderData.page - 1, 1) + 2,
+              ].map(page => (
+                <PaginationLink
+                  key={page}
                   to={{
-                    search: getPageSearch(loaderData.page + 1),
+                    search: getPageSearch(page),
                   }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+                  isActive={loaderData.page == page}
+                >
+                  {page}
+                </PaginationLink>
+              ))}
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationEllipsis />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                to={{
+                  search: getPageSearch(loaderData.page + 1),
+                }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
     ),
+    [loaderData.page],
+  );
+
+  const casesArea = useMemo(
+    () =>
+      loaderData.cases && (
+        <div className="flex grow flex-col">
+          <Suspense
+            fallback={mapWithDivider(
+              new Array(loaderData.pageSize).fill(0),
+              (_, i) => (
+                <CaseCardSkeleton key={i} />
+              ),
+              (_, i) => (
+                <div key={`divider-${i}`} className="border-b border-border"></div>
+              ),
+            )}
+          >
+            <Await resolve={loaderData.cases}>
+              {cases => (
+                <>
+                  <Spinner
+                    show={
+                      navigation.location?.pathname === "/" &&
+                      navigation.formMethod === "GET" &&
+                      navigation.state === "loading"
+                    }
+                    size="large"
+                    className="w-12 h-12 mb-8"
+                  />
+                  {mapWithDivider(
+                    CaseSchema.array().parse(cases),
+                    (c, i) => (
+                      <CaseCard
+                        key={c.name}
+                        serialNumber={(loaderData.page - 1) * loaderData.pageSize + i + 1}
+                        case={c}
+                      />
+                    ),
+                    (_, i) => (
+                      <div key={`divider-${i}`} className="border-b border-border"></div>
+                    ),
+                  )}
+                </>
+              )}
+            </Await>
+          </Suspense>
+          <div className="border-b border-border"></div>
+          {pagination}
+        </div>
+      ),
+    [loaderData, navigation],
+  );
+
+  const lawsArea = useMemo(
+    () =>
+      loaderData.laws && (
+        <div className="flex grow flex-col">
+          <Suspense
+            fallback={mapWithDivider(
+              new Array(loaderData.pageSize).fill(0),
+              (_, i) => (
+                <CaseCardSkeleton key={i} />
+              ),
+              (_, i) => (
+                <div key={`divider-${i}`} className="border-b border-border"></div>
+              ),
+            )}
+          >
+            <Await resolve={loaderData.laws}>
+              {laws => (
+                <>
+                  <Spinner
+                    show={
+                      navigation.location?.pathname === "/" &&
+                      navigation.formMethod === "GET" &&
+                      navigation.state === "loading"
+                    }
+                    size="large"
+                    className="w-12 h-12 mb-8"
+                  />
+                  {mapWithDivider(
+                    laws,
+                    (l, i) => (
+                      <LawCard key={l.title} serialNumber={i + 1} law={l} />
+                    ),
+                    (_, i) => (
+                      <div key={`divider-${i}`} className="border-b border-border"></div>
+                    ),
+                  )}
+                </>
+              )}
+            </Await>
+          </Suspense>
+          <div className="border-b border-border"></div>
+          {pagination}
+        </div>
+      ),
     [loaderData, navigation],
   );
 
@@ -272,6 +348,7 @@ export default function Index() {
             }
           }}
         />
+        <input type="hidden" name="collection" value={loaderData.collection} />
       </Form>
       <div className="flex gap-8">
         <div className="flex basis-80 flex-col gap-4 shrink-0">
@@ -295,7 +372,34 @@ export default function Index() {
             />
           ))}
         </div>
-        {casesArea}
+        <div className="flex flex-col gap-4 grow">
+          <div className="flex w-full space-x-2">
+            <Button
+              variant={loaderData.collection === "law" ? "default" : "outline"}
+              className="flex-1"
+              onClick={() =>
+                navigate({
+                  search: getCollectionSearch("law"),
+                })
+              }
+            >
+              法律法规
+            </Button>
+            <Button
+              variant={loaderData.collection === "case" ? "default" : "outline"}
+              className="flex-1"
+              onClick={() =>
+                navigate({
+                  search: getCollectionSearch("case"),
+                })
+              }
+            >
+              裁判文书
+            </Button>
+          </div>
+          {casesArea}
+          {lawsArea}
+        </div>
       </div>
     </div>
   );

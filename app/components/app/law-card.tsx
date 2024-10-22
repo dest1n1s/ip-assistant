@@ -61,9 +61,7 @@ export const LawCard = ({ serialNumber, law }: LawCardProps) => {
               <div className="text-lg font-semibold hover:underline">{law.title}</div>
             </Link>
           </div>
-          {intro && (
-            <div className="text-md line-clamp-3 text-gray-700">{intro}...</div>
-          )}
+          {intro && <div className="text-md line-clamp-3 text-gray-700">{intro}...</div>}
           {matchedContents && (
             <div className="text-md flex flex-col gap-4 py-2  ">
               <div className="font-bold">匹配内容：</div>

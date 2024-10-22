@@ -1,3 +1,5 @@
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { useVercelUseChatRuntime } from "@assistant-ui/react-ai-sdk";
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import {
   Await,
@@ -9,12 +11,14 @@ import {
   useSearchParams,
   useSubmit,
 } from "@remix-run/react";
+import { useChat } from "ai/react";
 import { Search } from "lucide-react";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CaseCard, CaseCardSkeleton } from "~/components/app/case-card";
 import { FilterCard } from "~/components/app/filter-card";
 import { FilterChip } from "~/components/app/filter-chip";
 import { LawCard } from "~/components/app/law-card";
+import { MyThread } from "~/components/ui/assistant-ui/thread";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -103,6 +107,49 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return defer({ cases, laws, filters, q, qFilters, page, pageSize, collection });
 }
 
+const ChatBlock = memo(() => {
+  const [showChat, setShowChat] = useState(false);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const getChatSearch = useCallback(() => {
+    const searchParamsNew = new URLSearchParams(searchParams);
+    searchParamsNew.delete("page");
+    searchParamsNew.delete("collection");
+    searchParamsNew.delete("pageSize");
+    return `?${searchParamsNew.toString()}`;
+  }, [searchParams]);
+
+  const chat = useChat({
+    api: `/chat${getChatSearch()}`,
+  });
+
+  const runtime = useVercelUseChatRuntime(chat);
+
+  return (
+    <>
+      {showChat && (
+        <AssistantRuntimeProvider runtime={runtime}>
+          <MyThread />
+        </AssistantRuntimeProvider>
+      )}
+      {!showChat && (
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setShowChat(true);
+            chat.handleSubmit({}, { allowEmptySubmit: true });
+          }}
+        >
+          AI 智能分析
+        </Button>
+      )}
+    </>
+  );
+});
+
+ChatBlock.displayName = "ChatBlock";
+
 export default function Index() {
   const loaderData = useLoaderData<typeof loader>();
   const loaderFilters = FilterCategorySchema.array().parse(loaderData.filters);
@@ -141,13 +188,21 @@ export default function Index() {
   const getCollectionSearch = useCallback(
     (collection: string) => {
       const searchParamsNew = new URLSearchParams(searchParams);
-      // Reset page to 1 when switching collection
-      searchParamsNew.set("page", "1");
+      // Reset page when switching collection
+      searchParamsNew.delete("page");
       searchParamsNew.set("collection", collection);
       return `?${searchParamsNew.toString()}`;
     },
     [searchParams],
   );
+
+  const getChatSearch = useCallback(() => {
+    const searchParamsNew = new URLSearchParams(searchParams);
+    searchParamsNew.delete("page");
+    searchParamsNew.delete("collection");
+    searchParamsNew.delete("pageSize");
+    return `?${searchParamsNew.toString()}`;
+  }, [searchParams]);
 
   const navigation = useNavigation();
 
@@ -373,6 +428,8 @@ export default function Index() {
           ))}
         </div>
         <div className="flex flex-col gap-4 grow">
+          <ChatBlock key={getChatSearch()} />
+
           <div className="flex w-full space-x-2">
             <Button
               variant={loaderData.collection === "law" ? "default" : "outline"}

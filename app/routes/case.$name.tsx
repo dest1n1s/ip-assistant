@@ -151,7 +151,7 @@ export default function CasePage() {
           ))}
         </div>
         <div className="flex flex-col gap-4 basis-80 max-w-80 shrink-0">
-          <Summary caseData={c} />
+          <Summary caseData={c} key={c.name} />
 
           <div className="flex flex-col gap-4 bg-surface shadow p-8">
             <h2 className="text-2xl font-bold text-foreground">相关案例</h2>
